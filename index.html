@@ -45,7 +45,15 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; }
+    header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; flex: 1; }
+    /* indicatore stato sync */
+    #sync-indicator {
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+    }
+    #sync-indicator.ok    { color: #1a7f37; }
+    #sync-indicator.error { color: #d0021b; }
 
     /* ── NAVIGAZIONE A SCHEDE ── */
     .tabs {
@@ -97,13 +105,8 @@
       flex-direction: column;
       gap: 10px;
     }
-    .add-form-grid .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
     .add-form-grid input[type="text"] {
-      flex: 1;
+      width: 100%;
       border: 1px solid #ccc;
       padding: 12px 10px;
       font-size: 16px;
@@ -111,7 +114,6 @@
     }
     .add-form-grid input[type="text"]:focus { border-color: #d0021b; }
 
-    /* pulsante upload immagine */
     .img-upload-btn {
       display: flex;
       align-items: center;
@@ -133,7 +135,6 @@
       flex-shrink: 0;
     }
     .img-upload-btn .preview.visible { display: block; }
-    .img-upload-btn span { font-size: 13px; }
     #file-input { display: none; }
 
     .btn-add {
@@ -165,7 +166,6 @@
     #exercise-list li:nth-child(even) { background: #f9f9f9; }
     #exercise-list li:active { background: #1c1c1c; color: #fff; }
 
-    /* icona esercizio in lista */
     .ex-icon {
       width: 44px;
       height: 44px;
@@ -198,94 +198,54 @@
       min-height: 34px;
       font-family: Arial, sans-serif;
     }
-    .ex-actions .btn-del:active { background: #d0021b; color: #fff; border-color: #d0021b; }
+    .ex-actions .btn-del:active  { background: #d0021b; color: #fff; border-color: #d0021b; }
     .ex-actions .btn-edit:active { background: #1c1c1c; color: #fff; border-color: #1c1c1c; }
 
-    /* ── MODAL MODIFICA ICONA ── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      z-index: 200;
+    /* ── GRIGLIA SELEZIONE ESERCIZIO (tab Log) ── */
+    #log-exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .log-ex-card {
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal {
+      gap: 6px;
+      padding: 10px 6px;
+      border: 2px solid #eee;
       background: #fff;
-      width: 100%;
-      max-width: 380px;
-      padding: 20px;
+      cursor: pointer;
+      text-align: center;
     }
-    .modal h3 {
-      font-size: 15px;
-      font-weight: bold;
-      margin-bottom: 14px;
-      color: #1c1c1c;
+    .log-ex-card:active { border-color: #d0021b; }
+    .log-ex-card.selected {
+      border-color: #d0021b;
+      background: #fff5f5;
     }
-    .modal-img-preview {
-      width: 80px;
-      height: 80px;
+    .log-ex-card img,
+    .log-ex-card .card-placeholder {
+      width: 56px;
+      height: 56px;
       object-fit: cover;
       border: 1px solid #ddd;
-      display: block;
-      margin: 0 auto 14px;
+      flex-shrink: 0;
     }
-    .modal-img-placeholder {
-      width: 80px;
-      height: 80px;
-      background: #f2f2f2;
-      border: 1px solid #ddd;
+    .log-ex-card .card-placeholder {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
-      margin: 0 auto 14px;
+      font-size: 26px;
+      background: #f2f2f2;
       color: #aaa;
     }
-    .modal-upload-btn {
-      display: block;
-      width: 100%;
-      border: 1px dashed #ccc;
-      padding: 11px;
-      text-align: center;
-      font-size: 14px;
-      color: #555;
-      cursor: pointer;
-      background: #f9f9f9;
-      margin-bottom: 14px;
-      font-family: Arial, sans-serif;
+    .log-ex-card .card-name {
+      font-size: 11px;
+      color: #333;
+      line-height: 1.3;
+      word-break: break-word;
     }
-    .modal-upload-btn:active { border-color: #d0021b; }
-    #modal-file-input { display: none; }
-    .modal-remove-btn {
-      display: block;
-      width: 100%;
-      border: 1px solid #d0021b;
-      color: #d0021b;
-      background: none;
-      padding: 10px;
-      font-size: 13px;
-      cursor: pointer;
-      margin-bottom: 14px;
-      font-family: Arial, sans-serif;
-    }
-    .modal-remove-btn:active { background: #d0021b; color: #fff; }
-    .modal-actions { display: flex; gap: 8px; }
-    .modal-actions button {
-      flex: 1;
-      padding: 12px;
-      font-size: 14px;
-      cursor: pointer;
-      font-family: Arial, sans-serif;
-      border: none;
-    }
-    .modal-btn-cancel { background: #eee; color: #333; }
-    .modal-btn-save   { background: #d0021b; color: #fff; font-weight: bold; }
-    .modal-btn-cancel:active { background: #ccc; }
-    .modal-btn-save:active   { background: #a80016; }
+    .log-ex-card.selected .card-name { color: #d0021b; font-weight: bold; }
 
     /* ── PAGINA LOG ── */
     #log-exercise-name {
@@ -364,52 +324,6 @@
     }
     .btn-primary:active { background: #a80016; }
 
-    /* ── GRIGLIA SELEZIONE ESERCIZIO (tab Log) ── */
-    #log-exercise-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .log-ex-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 6px;
-      border: 2px solid #eee;
-      background: #fff;
-      cursor: pointer;
-      text-align: center;
-    }
-    .log-ex-card:active { border-color: #d0021b; }
-    .log-ex-card.selected {
-      border-color: #d0021b;
-      background: #fff5f5;
-    }
-    .log-ex-card img,
-    .log-ex-card .card-placeholder {
-      width: 56px;
-      height: 56px;
-      object-fit: cover;
-      border: 1px solid #ddd;
-      flex-shrink: 0;
-    }
-    .log-ex-card .card-placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-      background: #f2f2f2;
-      color: #aaa;
-    }
-    .log-ex-card .card-name {
-      font-size: 11px;
-      color: #333;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-    .log-ex-card.selected .card-name { color: #d0021b; font-weight: bold; }
-
     /* ── STORICO ── */
     #history-exercise-select {
       width: 100%;
@@ -462,6 +376,106 @@
     }
     #last-set-badge strong { color: #1a7f37; }
 
+    /* ── MODAL MODIFICA ICONA ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      width: 100%;
+      max-width: 380px;
+      padding: 20px;
+    }
+    .modal h3 { font-size: 15px; font-weight: bold; margin-bottom: 14px; color: #1c1c1c; }
+    .modal-img-preview {
+      width: 80px; height: 80px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+      display: block;
+      margin: 0 auto 14px;
+    }
+    .modal-img-placeholder {
+      width: 80px; height: 80px;
+      background: #f2f2f2;
+      border: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 14px;
+      color: #aaa;
+    }
+    .modal-upload-btn {
+      display: block;
+      width: 100%;
+      border: 1px dashed #ccc;
+      padding: 11px;
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      cursor: pointer;
+      background: #f9f9f9;
+      margin-bottom: 14px;
+      font-family: Arial, sans-serif;
+    }
+    #modal-file-input { display: none; }
+    .modal-remove-btn {
+      display: block;
+      width: 100%;
+      border: 1px solid #d0021b;
+      color: #d0021b;
+      background: none;
+      padding: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-bottom: 14px;
+      font-family: Arial, sans-serif;
+    }
+    .modal-remove-btn:active { background: #d0021b; color: #fff; }
+    .modal-actions { display: flex; gap: 8px; }
+    .modal-actions button {
+      flex: 1; padding: 12px; font-size: 14px;
+      cursor: pointer; font-family: Arial, sans-serif; border: none;
+    }
+    .modal-btn-cancel { background: #eee; color: #333; }
+    .modal-btn-save   { background: #d0021b; color: #fff; font-weight: bold; }
+    .modal-btn-cancel:active { background: #ccc; }
+    .modal-btn-save:active   { background: #a80016; }
+
+    /* ── SCHERMATA CARICAMENTO ── */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #1c1c1c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      z-index: 999;
+    }
+    #loading-screen .logo-big {
+      background: #d0021b;
+      color: #fff;
+      font-size: 36px;
+      font-weight: bold;
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #loading-screen p { color: #888; font-size: 14px; font-family: Arial, sans-serif; }
+    #loading-screen.hidden { display: none; }
+
     /* ── SCROLLBAR ── */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: #ccc; }
@@ -470,9 +484,16 @@
 </head>
 <body>
 
+<!-- Schermata di caricamento iniziale -->
+<div id="loading-screen">
+  <div class="logo-big">G</div>
+  <p>Connessione in corso…</p>
+</div>
+
 <header>
   <div class="logo">G</div>
   <h1>GYM TRACKER</h1>
+  <span id="sync-indicator">●</span>
 </header>
 
 <div class="tabs">
@@ -486,11 +507,8 @@
   <div class="card">
     <h2>Aggiungi esercizio</h2>
     <div class="add-form-grid">
-      <div class="row">
-        <input type="text" id="new-exercise" placeholder="Es. Panca piana…" maxlength="60"
-               inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" />
-      </div>
-      <!-- area upload immagine -->
+      <input type="text" id="new-exercise" placeholder="Es. Panca piana…" maxlength="60"
+             inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" />
       <label class="img-upload-btn" for="file-input">
         <img class="preview" id="add-preview" src="" alt="anteprima" />
         <span id="add-upload-label">📷 Aggiungi immagine (opzionale)</span>
@@ -499,7 +517,6 @@
       <button class="btn-add" id="btn-add-exercise">+ Aggiungi esercizio</button>
     </div>
   </div>
-
   <div class="card">
     <h2>I tuoi esercizi</h2>
     <ul id="exercise-list"></ul>
@@ -557,7 +574,7 @@
       <option value="">— scegli —</option>
     </select>
   </div>
-  <div class="card" id="history-card">
+  <div class="card">
     <h2>Log</h2>
     <div id="history-content">
       <div class="empty-msg">Seleziona un esercizio per vedere lo storico.</div>
@@ -580,44 +597,105 @@
   </div>
 </div>
 
-<script>
-  // ── storage ──
-  const KEY = 'gymtracker_v1';
-  function load() {
-    try { return JSON.parse(localStorage.getItem(KEY)) || { exercises: [], logs: [] }; }
-    catch { return { exercises: [], logs: [] }; }
-  }
-  function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
-  let db = load();
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getFirestore, collection, doc,
+           onSnapshot, addDoc, updateDoc,
+           deleteDoc, setDoc, query,
+           orderBy, serverTimestamp }               from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-  // ── uid ──
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  // ── configurazione Firebase ──
+  const firebaseConfig = {
+    apiKey:            "AIzaSyB60V4Jp6Rk9I8B1tb9033iP3iSrv2oAxY",
+    authDomain:        "gym-tracker-a5f1d.firebaseapp.com",
+    projectId:         "gym-tracker-a5f1d",
+    storageBucket:     "gym-tracker-a5f1d.firebasestorage.app",
+    messagingSenderId: "712965008242",
+    appId:             "1:712965008242:web:d9a347472821d80626cbeb"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // ── riferimenti collezioni ──
+  const exercisesRef = collection(db, 'exercises');
+  const logsRef      = collection(db, 'logs');
+
+  // ── cache locale (aggiornata da onSnapshot) ──
+  let exercises = [];
+  let logs      = [];
+
+  // ── elementi DOM ──
+  const loadingScreen   = document.getElementById('loading-screen');
+  const syncIndicator   = document.getElementById('sync-indicator');
+  const exerciseList    = document.getElementById('exercise-list');
+  const noExercises     = document.getElementById('no-exercises');
+  const newExInput      = document.getElementById('new-exercise');
+  const btnAddEx        = document.getElementById('btn-add-exercise');
+  const fileInput       = document.getElementById('file-input');
+  const addPreview      = document.getElementById('add-preview');
+  const addUploadLbl    = document.getElementById('add-upload-label');
+  const logGrid         = document.getElementById('log-exercise-grid');
+  const logPanel        = document.getElementById('log-panel');
+  const logExName       = document.getElementById('log-exercise-name');
+  const lastBadge       = document.getElementById('last-set-badge');
+  const inpReps         = document.getElementById('inp-reps');
+  const inpWeight       = document.getElementById('inp-weight');
+  const btnLogSet       = document.getElementById('btn-log-set');
+  const noLogEx         = document.getElementById('no-log-exercises');
+  const historySelect   = document.getElementById('history-exercise-select');
+  const historyContent  = document.getElementById('history-content');
+  const modalOverlay    = document.getElementById('modal-overlay');
+  const modalTitle      = document.getElementById('modal-title');
+  const modalImgCont    = document.getElementById('modal-img-container');
+  const modalFileInp    = document.getElementById('modal-file-input');
+  const modalRemove     = document.getElementById('modal-remove-btn');
+  const modalCancel     = document.getElementById('modal-cancel');
+  const modalSave       = document.getElementById('modal-save');
+
+  let selectedLogId = null;
+  let pendingImage  = null;
+  let editingId     = null;
+  let modalImage    = null;
+  let initialLoad   = { exercises: false, logs: false };
+
+  // ── indicatore sync ──
+  function setSyncOk()    { syncIndicator.textContent = '●'; syncIndicator.className = 'ok'; }
+  function setSyncError() { syncIndicator.textContent = '●'; syncIndicator.className = 'error'; }
+  function setSyncWait()  { syncIndicator.textContent = '●'; syncIndicator.className = ''; }
+
+  // ── nasconde loading dopo primo caricamento ──
+  function checkInitialLoad() {
+    if (initialLoad.exercises && initialLoad.logs) {
+      loadingScreen.classList.add('hidden');
+      setSyncOk();
+    }
+  }
 
   // ── formati data/ora ──
   function fmtDate(ts) {
-    return new Date(ts).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
   }
   function fmtTime(ts) {
-    return new Date(ts).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
   }
 
-  // ── ridimensiona immagine a 80x80 via canvas e restituisce base64 ──
+  // ── ridimensiona immagine 80x80 JPEG base64 ──
   function resizeImage(file, size, callback) {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width  = size;
-        canvas.height = size;
+        canvas.width = canvas.height = size;
         const ctx = canvas.getContext('2d');
-        // ritaglia al centro (cover)
-        const ratio  = Math.max(size / img.width, size / img.height);
+        const ratio = Math.max(size / img.width, size / img.height);
         const w = img.width  * ratio;
         const h = img.height * ratio;
-        const x = (size - w) / 2;
-        const y = (size - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
         callback(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.src = e.target.result;
@@ -626,111 +704,104 @@
   }
 
   // ── cambio tab ──
-  function switchTab(tabId, btn) {
+  window.switchTab = function(tabId, btn) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
-    if (tabId === 'tab-log')     refreshLogSelect();
-    if (tabId === 'tab-history') refreshHistorySelect();
-  }
+    if (tabId === 'tab-log')     renderLogGrid();
+    if (tabId === 'tab-history') renderHistorySelect();
+  };
+
+  // ══════════════════════════════════════
+  // LISTENER REAL-TIME FIRESTORE
+  // ══════════════════════════════════════
+
+  // ascolta gli esercizi in tempo reale
+  onSnapshot(
+    query(exercisesRef, orderBy('createdAt')),
+    snap => {
+      exercises = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      initialLoad.exercises = true;
+      checkInitialLoad();
+      renderExercises();
+      renderLogGrid();
+      renderHistorySelect();
+      setSyncOk();
+    },
+    () => setSyncError()
+  );
+
+  // ascolta i log in tempo reale
+  onSnapshot(
+    query(logsRef, orderBy('createdAt')),
+    snap => {
+      logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      initialLoad.logs = true;
+      checkInitialLoad();
+      // aggiorna badge e storico se aperto
+      if (selectedLogId) showLogPanel(selectedLogId);
+      const histVal = historySelect.value;
+      if (histVal) renderHistory(histVal);
+      setSyncOk();
+    },
+    () => setSyncError()
+  );
 
   // ══════════════════════════════════════
   // TAB ESERCIZI
   // ══════════════════════════════════════
 
-  const exerciseList  = document.getElementById('exercise-list');
-  const noExercises   = document.getElementById('no-exercises');
-  const newExInput    = document.getElementById('new-exercise');
-  const btnAddEx      = document.getElementById('btn-add-exercise');
-  const fileInput     = document.getElementById('file-input');
-  const addPreview    = document.getElementById('add-preview');
-  const addUploadLbl  = document.getElementById('add-upload-label');
-
-  // immagine pendente per il nuovo esercizio
-  let pendingImage = null;
-
-  // anteprima immagine nel form aggiungi
-  fileInput.addEventListener('change', () => {
-    if (!fileInput.files[0]) return;
-    resizeImage(fileInput.files[0], 80, b64 => {
-      pendingImage = b64;
-      addPreview.src = b64;
-      addPreview.classList.add('visible');
-      addUploadLbl.textContent = '✓ Immagine pronta — tocca per cambiare';
-    });
-  });
-
-  // costruisce l'icona per la lista (img o placeholder)
+  // costruisce icona per la lista
   function makeIcon(ex, size) {
     if (ex.image) {
       const img = document.createElement('img');
-      img.src       = ex.image;
-      img.alt       = ex.name;
+      img.src = ex.image; img.alt = ex.name;
       img.className = 'ex-icon';
-      img.style.width  = size + 'px';
-      img.style.height = size + 'px';
+      img.style.width = img.style.height = size + 'px';
       return img;
-    } else {
-      const div = document.createElement('div');
-      div.className = 'ex-icon-placeholder';
-      div.style.width  = size + 'px';
-      div.style.height = size + 'px';
-      div.textContent = '🏋️';
-      return div;
     }
+    const div = document.createElement('div');
+    div.className = 'ex-icon-placeholder';
+    div.style.width = div.style.height = size + 'px';
+    div.textContent = '🏋️';
+    return div;
   }
 
   function renderExercises() {
     exerciseList.innerHTML = '';
-    noExercises.style.display = db.exercises.length === 0 ? 'block' : 'none';
-
-    db.exercises.forEach(ex => {
+    noExercises.style.display = exercises.length === 0 ? 'block' : 'none';
+    exercises.forEach(ex => {
       const li = document.createElement('li');
-
-      // icona 44x44
       li.appendChild(makeIcon(ex, 44));
 
-      // nome
       const span = document.createElement('span');
-      span.className   = 'ex-name';
-      span.textContent = ex.name;
+      span.className = 'ex-name'; span.textContent = ex.name;
 
-      // pulsanti
       const actions = document.createElement('div');
       actions.className = 'ex-actions';
 
       const editBtn = document.createElement('button');
-      editBtn.className   = 'btn-edit';
-      editBtn.textContent = '🖼';
-      editBtn.title       = 'Modifica icona';
+      editBtn.className = 'btn-edit'; editBtn.textContent = '🖼'; editBtn.title = 'Modifica icona';
 
       const delBtn = document.createElement('button');
-      delBtn.className   = 'btn-del';
-      delBtn.textContent = 'Elimina';
+      delBtn.className = 'btn-del'; delBtn.textContent = 'Elimina';
 
-      // modifica icona → apre modal
-      editBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        openModal(ex.id);
-      });
+      editBtn.addEventListener('click', e => { e.stopPropagation(); openModal(ex.id); });
 
-      // elimina esercizio
-      delBtn.addEventListener('click', e => {
+      delBtn.addEventListener('click', async e => {
         e.stopPropagation();
         if (!confirm(`Eliminare "${ex.name}" e tutto il suo storico?`)) return;
-        db.exercises = db.exercises.filter(x => x.id !== ex.id);
-        db.logs      = db.logs.filter(l => l.exerciseId !== ex.id);
-        save(db);
-        renderExercises();
+        // elimina tutti i log collegati
+        const toDelete = logs.filter(l => l.exerciseId === ex.id);
+        await Promise.all(toDelete.map(l => deleteDoc(doc(db, 'logs', l.id))));
+        await deleteDoc(doc(db, 'exercises', ex.id));
       });
 
-      // tap riga → vai a registra
       li.addEventListener('click', e => {
         if (e.target === editBtn || e.target === delBtn) return;
         const tabBtn = document.querySelectorAll('.tabs button')[1];
         switchTab('tab-log', tabBtn);
-        // seleziona automaticamente la card nella griglia
         selectLogExercise(ex.id);
       });
 
@@ -742,23 +813,35 @@
     });
   }
 
-  function addExercise() {
+  // anteprima immagine nel form
+  fileInput.addEventListener('change', () => {
+    if (!fileInput.files[0]) return;
+    resizeImage(fileInput.files[0], 80, b64 => {
+      pendingImage = b64;
+      addPreview.src = b64;
+      addPreview.classList.add('visible');
+      addUploadLbl.textContent = '✓ Immagine pronta — tocca per cambiare';
+    });
+  });
+
+  async function addExercise() {
     const name = newExInput.value.trim();
     if (!name) return;
-    if (db.exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) {
-      alert('Esercizio già presente.');
-      return;
+    if (exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+      alert('Esercizio già presente.'); return;
     }
-    db.exercises.push({ id: uid(), name, image: pendingImage });
-    save(db);
-    // reset form
+    setSyncWait();
+    await addDoc(exercisesRef, {
+      name,
+      image: pendingImage || null,
+      createdAt: serverTimestamp()
+    });
     newExInput.value = '';
-    pendingImage     = null;
-    fileInput.value  = '';
-    addPreview.src   = '';
+    pendingImage = null;
+    fileInput.value = '';
+    addPreview.src = '';
     addPreview.classList.remove('visible');
     addUploadLbl.textContent = '📷 Aggiungi immagine (opzionale)';
-    renderExercises();
   }
 
   btnAddEx.addEventListener('click', addExercise);
@@ -768,21 +851,10 @@
   // MODAL MODIFICA ICONA
   // ══════════════════════════════════════
 
-  const modalOverlay  = document.getElementById('modal-overlay');
-  const modalTitle    = document.getElementById('modal-title');
-  const modalImgCont  = document.getElementById('modal-img-container');
-  const modalFileInp  = document.getElementById('modal-file-input');
-  const modalRemove   = document.getElementById('modal-remove-btn');
-  const modalCancel   = document.getElementById('modal-cancel');
-  const modalSave     = document.getElementById('modal-save');
-
-  let editingId    = null; // id esercizio in modifica
-  let modalImage   = null; // immagine corrente nel modal (null = rimossa)
-
   function openModal(exId) {
-    const ex      = db.exercises.find(e => e.id === exId);
-    editingId     = exId;
-    modalImage    = ex.image || null;
+    const ex = exercises.find(e => e.id === exId);
+    editingId  = exId;
+    modalImage = ex.image || null;
     modalTitle.textContent = `Icona: ${ex.name}`;
     renderModalPreview();
     modalOverlay.classList.add('open');
@@ -792,111 +864,72 @@
     modalImgCont.innerHTML = '';
     if (modalImage) {
       const img = document.createElement('img');
-      img.src       = modalImage;
-      img.className = 'modal-img-preview';
+      img.src = modalImage; img.className = 'modal-img-preview';
       modalImgCont.appendChild(img);
     } else {
       const div = document.createElement('div');
-      div.className   = 'modal-img-placeholder';
-      div.textContent = '🏋️';
+      div.className = 'modal-img-placeholder'; div.textContent = '🏋️';
       modalImgCont.appendChild(div);
     }
   }
 
-  // carica nuova immagine nel modal
   modalFileInp.addEventListener('change', () => {
     if (!modalFileInp.files[0]) return;
-    resizeImage(modalFileInp.files[0], 80, b64 => {
-      modalImage = b64;
-      renderModalPreview();
-    });
+    resizeImage(modalFileInp.files[0], 80, b64 => { modalImage = b64; renderModalPreview(); });
   });
 
-  modalRemove.addEventListener('click', () => {
-    modalImage = null;
-    renderModalPreview();
-  });
+  modalRemove.addEventListener('click', () => { modalImage = null; renderModalPreview(); });
 
   modalCancel.addEventListener('click', () => {
+    modalOverlay.classList.remove('open'); modalFileInp.value = '';
+  });
+
+  modalSave.addEventListener('click', async () => {
+    setSyncWait();
+    await updateDoc(doc(db, 'exercises', editingId), { image: modalImage || null });
     modalOverlay.classList.remove('open');
     modalFileInp.value = '';
   });
 
-  modalSave.addEventListener('click', () => {
-    const ex = db.exercises.find(e => e.id === editingId);
-    if (ex) {
-      ex.image = modalImage;
-      save(db);
-      renderExercises();
-      // aggiorna il pannello log se quell'esercizio è selezionato
-      if (selectedLogId === editingId) showLogPanel(editingId);
-    }
-    modalOverlay.classList.remove('open');
-    modalFileInp.value = '';
-  });
-
-  // chiudi modal toccando fuori
   modalOverlay.addEventListener('click', e => {
-    if (e.target === modalOverlay) {
-      modalOverlay.classList.remove('open');
-      modalFileInp.value = '';
-    }
+    if (e.target === modalOverlay) { modalOverlay.classList.remove('open'); modalFileInp.value = ''; }
   });
 
   // ══════════════════════════════════════
   // TAB LOG
   // ══════════════════════════════════════
 
-  const logGrid    = document.getElementById('log-exercise-grid');
-  const logPanel   = document.getElementById('log-panel');
-  const logExName  = document.getElementById('log-exercise-name');
-  const lastBadge  = document.getElementById('last-set-badge');
-  const inpReps    = document.getElementById('inp-reps');
-  const inpWeight  = document.getElementById('inp-weight');
-  const btnLogSet  = document.getElementById('btn-log-set');
-  const noLogEx    = document.getElementById('no-log-exercises');
+  window.setReps = n => { inpReps.value = n; inpWeight.focus(); };
 
-  // id esercizio attualmente selezionato nella griglia
-  let selectedLogId = null;
-
-  function setReps(n) { inpReps.value = n; inpWeight.focus(); }
-
-  // costruisce la griglia di card esercizi
-  function refreshLogGrid() {
+  function renderLogGrid() {
     logGrid.innerHTML = '';
-    selectedLogId = null;
-    logPanel.style.display = 'none';
-
-    if (db.exercises.length === 0) {
+    if (exercises.length === 0) {
       noLogEx.style.display = 'block';
       logGrid.parentElement.style.display = 'none';
+      logPanel.style.display = 'none';
       return;
     }
     noLogEx.style.display = 'none';
     logGrid.parentElement.style.display = 'block';
 
-    db.exercises.forEach(ex => {
+    exercises.forEach(ex => {
       const card = document.createElement('div');
       card.className    = 'log-ex-card';
       card.dataset.exId = ex.id;
+      if (ex.id === selectedLogId) card.classList.add('selected');
 
-      // icona
       if (ex.image) {
         const img = document.createElement('img');
-        img.src = ex.image;
-        img.alt = ex.name;
+        img.src = ex.image; img.alt = ex.name;
         card.appendChild(img);
       } else {
         const ph = document.createElement('div');
-        ph.className   = 'card-placeholder';
-        ph.textContent = '🏋️';
+        ph.className = 'card-placeholder'; ph.textContent = '🏋️';
         card.appendChild(ph);
       }
 
-      // nome
       const nameEl = document.createElement('span');
-      nameEl.className   = 'card-name';
-      nameEl.textContent = ex.name;
+      nameEl.className = 'card-name'; nameEl.textContent = ex.name;
       card.appendChild(nameEl);
 
       card.addEventListener('click', () => selectLogExercise(ex.id));
@@ -906,30 +939,25 @@
 
   function selectLogExercise(id) {
     selectedLogId = id;
-    // evidenzia card selezionata
     logGrid.querySelectorAll('.log-ex-card').forEach(c => {
       c.classList.toggle('selected', c.dataset.exId === id);
     });
     showLogPanel(id);
+    // scrolla al pannello set
+    logPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function refreshLogSelect() { refreshLogGrid(); }
   function showLogPanel(id) {
-    const ex = db.exercises.find(e => e.id === id);
+    const ex = exercises.find(e => e.id === id);
     if (!ex) { logPanel.style.display = 'none'; return; }
 
     logPanel.style.display = 'block';
-
-    // titolo con icona se presente
     logExName.innerHTML = '';
     if (ex.image) {
       const img = document.createElement('img');
-      img.src    = ex.image;
-      img.alt    = ex.name;
-      img.width  = 40;
-      img.height = 40;
-      img.style.objectFit = 'cover';
-      img.style.border    = '1px solid #ddd';
+      img.src = ex.image; img.alt = ex.name;
+      img.width = img.height = 40;
+      img.style.cssText = 'object-fit:cover;border:1px solid #ddd;';
       logExName.appendChild(img);
     }
     const nameSpan = document.createElement('span');
@@ -937,24 +965,26 @@
     logExName.appendChild(nameSpan);
 
     // badge ultimo set
-    const lastLog = db.logs
-      .filter(l => l.exerciseId === id)
-      .sort((a, b) => b.ts - a.ts)[0];
+    const exLogs = logs.filter(l => l.exerciseId === id);
+    const lastLog = exLogs.length
+      ? exLogs.reduce((a, b) => {
+          const at = a.createdAt?.toMillis?.() ?? 0;
+          const bt = b.createdAt?.toMillis?.() ?? 0;
+          return bt > at ? b : a;
+        })
+      : null;
+
     if (lastLog) {
-      const wStr = lastLog.weight !== null ? ` · ${lastLog.weight} kg` : '';
-      lastBadge.innerHTML = `Ultimo: <strong>${lastLog.reps} reps${wStr}</strong> — ${fmtDate(lastLog.ts)} ${fmtTime(lastLog.ts)}`;
+      const wStr = lastLog.weight != null ? ` · ${lastLog.weight} kg` : '';
+      lastBadge.innerHTML = `Ultimo: <strong>${lastLog.reps} reps${wStr}</strong> — ${fmtDate(lastLog.createdAt)} ${fmtTime(lastLog.createdAt)}`;
       lastBadge.style.display = 'block';
     } else {
       lastBadge.style.display = 'none';
     }
-
-    inpReps.value   = '';
-    inpWeight.value = '';
   }
 
-  btnLogSet.addEventListener('click', () => {
-    const exId = selectedLogId;
-    if (!exId) return;
+  btnLogSet.addEventListener('click', async () => {
+    if (!selectedLogId) return;
     const reps = parseInt(inpReps.value, 10);
     if (!reps || reps < 1) {
       inpReps.style.borderColor = '#d0021b';
@@ -965,38 +995,36 @@
     }
     const weightVal = inpWeight.value.trim();
     const weight    = weightVal !== '' ? parseFloat(weightVal) : null;
-    db.logs.push({ id: uid(), exerciseId: exId, reps, weight, ts: Date.now() });
-    save(db);
 
-    btnLogSet.textContent       = '✓ Salvato!';
-    btnLogSet.style.background  = '#1a7f37';
-    setTimeout(() => {
-      btnLogSet.textContent      = '💾 Salva set';
-      btnLogSet.style.background = '';
-    }, 1200);
+    setSyncWait();
+    await addDoc(logsRef, {
+      exerciseId: selectedLogId,
+      reps,
+      weight,
+      createdAt: serverTimestamp()
+    });
+
+    btnLogSet.textContent      = '✓ Salvato!';
+    btnLogSet.style.background = '#1a7f37';
+    setTimeout(() => { btnLogSet.textContent = '💾 Salva set'; btnLogSet.style.background = ''; }, 1200);
 
     inpReps.value   = '';
     inpWeight.value = '';
-    showLogPanel(exId);
   });
 
   // ══════════════════════════════════════
   // TAB STORICO
   // ══════════════════════════════════════
 
-  const historySelect  = document.getElementById('history-exercise-select');
-  const historyContent = document.getElementById('history-content');
-
-  function refreshHistorySelect() {
+  function renderHistorySelect() {
     const prev = historySelect.value;
     historySelect.innerHTML = '<option value="">— scegli —</option>';
-    db.exercises.forEach(ex => {
+    exercises.forEach(ex => {
       const opt = document.createElement('option');
-      opt.value       = ex.id;
-      opt.textContent = ex.name;
+      opt.value = ex.id; opt.textContent = ex.name;
       historySelect.appendChild(opt);
     });
-    if (prev && db.exercises.find(e => e.id === prev)) {
+    if (prev && exercises.find(e => e.id === prev)) {
       historySelect.value = prev;
       renderHistory(prev);
     } else {
@@ -1005,36 +1033,45 @@
   }
 
   function renderHistory(id) {
-    const logs = db.logs.filter(l => l.exerciseId === id).sort((a, b) => b.ts - a.ts);
-    if (logs.length === 0) {
+    const exLogs = logs
+      .filter(l => l.exerciseId === id)
+      .sort((a, b) => {
+        const at = a.createdAt?.toMillis?.() ?? 0;
+        const bt = b.createdAt?.toMillis?.() ?? 0;
+        return bt - at;
+      });
+
+    if (exLogs.length === 0) {
       historyContent.innerHTML = '<div class="empty-msg">Nessun set registrato per questo esercizio.</div>';
       return;
     }
+
     const table = document.createElement('table');
     table.className = 'history-table';
     table.innerHTML = `
       <thead><tr>
         <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th>
-      </tr></thead>
-      <tbody></tbody>`;
+      </tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
-    logs.forEach(log => {
+
+    exLogs.forEach(log => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${fmtDate(log.ts)}</td>
-        <td>${fmtTime(log.ts)}</td>
+        <td>${fmtDate(log.createdAt)}</td>
+        <td>${fmtTime(log.createdAt)}</td>
         <td><strong>${log.reps}</strong></td>
-        <td>${log.weight !== null ? log.weight : '—'}</td>
+        <td>${log.weight != null ? log.weight : '—'}</td>
         <td><button class="del-row" data-id="${log.id}">✕</button></td>`;
       tbody.appendChild(tr);
     });
+
     historyContent.innerHTML = '';
     historyContent.appendChild(table);
+
     historyContent.querySelectorAll('.del-row').forEach(btn => {
-      btn.addEventListener('click', () => {
-        db.logs = db.logs.filter(l => l.id !== btn.dataset.id);
-        save(db);
-        renderHistory(id);
+      btn.addEventListener('click', async () => {
+        setSyncWait();
+        await deleteDoc(doc(db, 'logs', btn.dataset.id));
       });
     });
   }
@@ -1044,9 +1081,6 @@
     else historyContent.innerHTML = '<div class="empty-msg">Seleziona un esercizio per vedere lo storico.</div>';
   });
 
-  // ── avvio ──
-  renderExercises();
-  refreshLogSelect();
 </script>
 </body>
 </html>
