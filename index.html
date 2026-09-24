@@ -964,10 +964,12 @@ function buildHint(exId) {
   const wArr=sessLogs.map(l=>l.weight).filter(v=>v!=null);
   if (!repsArr.length) return '';
   const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
+  // mostra range solo se davvero diversi
+  const repsStr = minR===maxR ? `${minR} reps` : `${minR}-${maxR} reps`;
   const w=wArr.length?wArr[0]:null;
   const ws=w!=null?` × ${w} kg`:'';
-  if (minR>=15) return `<span class="hint-up">⬆ Aumenta il peso! Ultima: ${minR}-${maxR} reps${ws}</span>`;
-  return `<span class="hint-more">Ultima: ${minR}-${maxR} reps${ws} → prova +1</span>`;
+  if (minR>=15) return `<span class="hint-up">⬆ Aumenta il peso! Ultima: ${repsStr}${ws}</span>`;
+  return `<span class="hint-more">Ultima: ${repsStr}${ws} → prova ${maxR+1} reps</span>`;
 }
 
 function renderStep() {
