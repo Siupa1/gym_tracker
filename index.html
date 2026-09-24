@@ -101,6 +101,23 @@
     .img-preview { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; display: none; }
     .img-preview.visible { display: block; }
 
+    /* ── TIMER ── */
+    .timer-display {
+      font-size: 64px; font-weight: bold; text-align: center; letter-spacing: 2px;
+      color: #1c1c1c; margin: 10px 0;
+    }
+    .timer-display.running { color: #d0021b; }
+    .timer-display.done    { color: #1a7f37; }
+    .timer-ring {
+      width: 140px; height: 140px; margin: 0 auto 12px;
+      position: relative; display: flex; align-items: center; justify-content: center;
+    }
+    .timer-ring svg { position: absolute; top:0; left:0; transform: rotate(-90deg); }
+    .timer-ring .tr-bg   { fill: none; stroke: #eee; stroke-width: 8; }
+    .timer-ring .tr-fill { fill: none; stroke: #d0021b; stroke-width: 8; stroke-linecap: butt; transition: stroke-dashoffset .9s linear; }
+    .timer-ring .tr-text { font-size: 26px; font-weight: bold; fill: #1c1c1c; text-anchor: middle; dominant-baseline: central; font-family: Arial, sans-serif; }
+    .timer-btns { display: flex; gap: 8px; margin-bottom: 10px; }
+
     /* ── SCHEDE: lista schede ── */
     .scheda-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -400,6 +417,22 @@
       <div id="cet-form-fatto" style="display:none">
         <p style="font-size:13px;color:#888;margin-bottom:12px">Nessun peso da registrare.</p>
       </div>
+
+      <!-- timer -->
+      <div id="cet-form-timer" style="display:none">
+        <div class="timer-ring">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle class="tr-bg"   cx="70" cy="70" r="58"/>
+            <circle class="tr-fill" id="timer-circle" cx="70" cy="70" r="58"
+              stroke-dasharray="364.4" stroke-dashoffset="0"/>
+            <text class="tr-text" id="timer-text" x="70" y="70">0:00</text>
+          </svg>
+        </div>
+        <div class="timer-btns">
+          <button class="btn btn-dark btn-full" id="btn-timer-start">▶ Avvia timer</button>
+          <button class="btn btn-ghost"         id="btn-timer-reset" style="padding:12px 14px">↺</button>
+        </div>
+      </div>
     </div>
 
     <!-- navigazione -->
@@ -535,6 +568,18 @@ function tsMs(ts) {
   if (typeof ts === 'number') return ts;
   return 0;
 }
+/* ── formatta secondi in mm:ss ── */
+function fmtSec(s) {
+  const m = Math.floor(s/60);
+  const r = s%60;
+  return m>0 ? `${m}′${r>0?r+'″':''}` : `${s}″`;
+}
+function fmtSecTimer(s) {
+  const m = Math.floor(s/60);
+  const r = String(s%60).padStart(2,'0');
+  return `${m}:${r}`;
+}
+
 function fmtDate(ts) {
   return new Date(tsMs(ts)||Date.now()).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'});
 }
@@ -808,9 +853,13 @@ function renderBlocchiEditor() {
             <option value="">+ Aggiungi esercizio…</option>
             ${exercises.map(ex=>`<option value="${ex.id}">${ex.name}</option>`).join('')}
           </select>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;white-space:nowrap">
-            <input type="checkbox" id="chk-sovc-${blocco.localId}" /> Peso
-          </label>
+          <select class="inp" id="sel-tipo-${blocco.localId}" style="width:auto;min-width:90px;font-size:13px;padding:8px 6px">
+            <option value="solo">Solo</option>
+            <option value="peso">Peso</option>
+            <option value="tempo">Tempo</option>
+          </select>
+          <input type="number" id="inp-durata-${blocco.localId}" min="1" max="3600" placeholder="sec"
+            style="display:none;width:60px;border:1px solid #ccc;padding:8px 6px;font-size:13px;font-family:Arial,sans-serif;outline:none" />
           <button class="btn btn-dark" style="padding:8px 12px;font-size:13px" data-bid="${blocco.localId}">+</button>
         </div>
       </div>`;
@@ -818,13 +867,24 @@ function renderBlocchiEditor() {
       editingBlocchi.splice(bi,1); renderBlocchiEditor();
     };
     div.querySelector(`button[data-bid="${blocco.localId}"]`).onclick = ()=>{
-      const sel = $(`sel-ex-${blocco.localId}`);
-      const chk = $(`chk-sovc-${blocco.localId}`);
+      const sel    = $(`sel-ex-${blocco.localId}`);
+      const selTipo= $(`sel-tipo-${blocco.localId}`);
+      const inpDur = $(`inp-durata-${blocco.localId}`);
       if (!sel.value) return;
-      blocco.esercizi.push({localId:uid(), exId:sel.value, sovraccarico:chk.checked});
-      sel.value=''; chk.checked=false;
+      const tipo = selTipo.value;
+      const durata = tipo==='tempo' ? (parseInt(inpDur.value)||60) : null;
+      blocco.esercizi.push({localId:uid(), exId:sel.value, tipo, durata});
+      sel.value=''; selTipo.value='solo'; inpDur.value=''; inpDur.style.display='none';
       renderBlocchiEditor();
     };
+    // mostra campo durata solo per "tempo"
+    setTimeout(()=>{
+      const selTipo = $(`sel-tipo-${blocco.localId}`);
+      const inpDur  = $(`inp-durata-${blocco.localId}`);
+      if (selTipo) selTipo.addEventListener('change', ()=>{
+        inpDur.style.display = selTipo.value==='tempo' ? 'block' : 'none';
+      });
+    }, 0);
     cont.appendChild(div);
     renderBloccoExList(blocco);
   });
@@ -845,7 +905,7 @@ function renderBloccoExList(blocco) {
     li.innerHTML=`
       ${iconEl}
       <span class="bei-name">${ex.name}</span>
-      <span class="bei-tag">${item.sovraccarico?'Peso':'Solo'}</span>
+      <span class="bei-tag">${item.tipo==='peso'?'Peso':item.tipo==='tempo'?`⏱ ${fmtSec(item.durata||60)}`:'Solo'}</span>
       <button class="bei-del" data-ei="${ei}">✕</button>`;
     li.querySelector('.bei-del').onclick = ()=>{
       blocco.esercizi.splice(ei,1); renderBlocchiEditor();
@@ -904,13 +964,17 @@ $('btn-inizia-al').onclick = ()=>{
   (s.blocchi||[]).forEach((b,bi)=>{
     for (let g=1; g<=b.giri; g++) {
       (b.esercizi||[]).forEach((e,ei)=>{
-        steps.push({ bloccoIdx:bi, bloccoName:b.name, giro:g, giriTot:b.giri, exIdx:ei, exId:e.exId, sovraccarico:e.sovraccarico });
+        steps.push({ bloccoIdx:bi, bloccoName:b.name, giro:g, giriTot:b.giri,
+          exIdx:ei, exId:e.exId, tipo:e.tipo||'solo', durata:e.durata||null,
+          // retrocompatibilità con schede vecchie (sovraccarico bool)
+          ...(e.sovraccarico!==undefined && e.tipo===undefined ? {tipo: e.sovraccarico?'peso':'solo'} : {})
+        });
       });
     }
   });
   if (!steps.length) { alert('Nessun esercizio nella scheda.'); return; }
 
-  session = { schedaId:sid, schedaName:s.name, steps, currentStep:0, results:[] };
+  session = { schedaId:sid, schedaName:s.name, steps, currentStep:0, results:[], sessionTs: Date.now() };
   $('allenamento-start').style.display='none';
   $('allenamento-session').style.display='block';
   progressWrap.style.display='block';
@@ -985,23 +1049,28 @@ function renderSessionStep() {
 
   $('cet-name').textContent = ex?.name||'—';
 
-  // hint progressione
-  if (step.sovraccarico) {
+  // hint progressione (solo per esercizi con peso)
+  if (step.tipo==='peso') {
     $('cet-hint').innerHTML = buildHint(step.exId);
   } else {
     $('cet-hint').textContent='';
   }
 
-  // form
-  const hasPeso = step.sovraccarico;
-  $('cet-form-peso').style.display  = hasPeso?'block':'none';
-  $('cet-form-fatto').style.display = hasPeso?'none':'block';
+  // form corretto in base al tipo
+  $('cet-form-peso').style.display  = step.tipo==='peso'  ? 'block' : 'none';
+  $('cet-form-fatto').style.display = step.tipo==='solo'  ? 'block' : 'none';
+  $('cet-form-timer').style.display = step.tipo==='tempo' ? 'block' : 'none';
   $('al-reps').value=''; $('al-weight').value='';
 
   // precompila con ultimo peso usato
-  if (hasPeso) {
+  if (step.tipo==='peso') {
     const last = getLastData(step.exId)[0];
     if (last?.weight!=null) $('al-weight').value=last.weight;
+  }
+
+  // inizializza timer se tipo tempo
+  if (step.tipo==='tempo') {
+    initTimer(step.durata||60);
   }
 }
 
@@ -1009,7 +1078,7 @@ $('btn-al-next').onclick = async ()=>{
   if (!session) return;
   const step = session.steps[session.currentStep];
 
-  if (step.sovraccarico) {
+  if (step.tipo==='peso') {
     const reps = parseInt($('al-reps').value,10);
     if (!reps||reps<1) {
       $('al-reps').style.borderColor='#d0021b';
@@ -1024,11 +1093,23 @@ $('btn-al-next').onclick = async ()=>{
     await addDoc(colLogs,{
       exerciseId: step.exId,
       reps, weight,
-      sessionId: session.schedaId+'_'+Date.now(),
+      sessionId: session.schedaId+'_'+session.sessionTs,
       clientTs: Date.now(),
       createdAt: serverTimestamp()
     });
     session.results.push({stepIdx:session.currentStep, reps, weight, skipped:false});
+  } else if (step.tipo==='tempo') {
+    stopTimer();
+    syncWait();
+    await addDoc(colLogs,{
+      exerciseId: step.exId,
+      reps: null, weight: null,
+      durata: step.durata||null,
+      sessionId: session.schedaId+'_'+session.sessionTs,
+      clientTs: Date.now(),
+      createdAt: serverTimestamp()
+    });
+    session.results.push({stepIdx:session.currentStep, reps:null, weight:null, durata:step.durata, skipped:false});
   } else {
     session.results.push({stepIdx:session.currentStep, reps:null, weight:null, skipped:false});
   }
@@ -1043,6 +1124,7 @@ $('btn-al-skip').onclick = ()=>{
 };
 
 function advanceSession() {
+  stopTimer(); // ferma eventuale timer attivo
   session.currentStep++;
   const { steps, currentStep } = session;
 
@@ -1076,8 +1158,9 @@ function showGiroSummary(lastStep) {
     const res = session.results.find(r=>r.stepIdx===s.i);
     const ex  = exercises.find(e=>e.id===s.exId);
     let val;
-    if (!res||res.skipped)       val='<span style="color:#aaa">saltato</span>';
-    else if (!s.sovraccarico)    val='<span style="color:#1a7f37">✓ fatto</span>';
+    if (!res||res.skipped)         val='<span style="color:#aaa">saltato</span>';
+    else if (s.tipo==='tempo')     val=`<span style="color:#1a7f37">⏱ ${fmtSec(s.durata||0)}</span>`;
+    else if (s.tipo!=='peso')      val='<span style="color:#1a7f37">✓ fatto</span>';
     else {
       const wStr = res.weight!=null?` × ${res.weight} kg`:'';
       val=`<strong>${res.reps} reps${wStr}</strong>`;
@@ -1120,6 +1203,71 @@ $('btn-fine-sessione').onclick = ()=>{
   progressWrap.style.display='none';
   progressFill.style.width='0%';
 };
+
+/* ════════════════════════════════════════
+   TIMER
+════════════════════════════════════════ */
+let timerTotal    = 0;
+let timerLeft     = 0;
+let timerInterval = null;
+const CIRCUMF     = 364.4; // 2π × 58
+
+function initTimer(seconds) {
+  stopTimer();
+  timerTotal = seconds;
+  timerLeft  = seconds;
+  updateTimerUI();
+  $('btn-timer-start').textContent = '▶ Avvia timer';
+  $('btn-timer-start').style.background = '';
+}
+
+function updateTimerUI() {
+  const circle = $('timer-circle');
+  const text   = $('timer-text');
+  if (!circle || !text) return;
+  const pct    = timerLeft / timerTotal;
+  circle.style.strokeDashoffset = CIRCUMF * (1 - pct);
+  // colore: verde quando finito
+  circle.style.stroke = timerLeft===0 ? '#1a7f37' : '#d0021b';
+  text.textContent    = fmtSecTimer(timerLeft);
+  text.style.fill     = timerLeft===0 ? '#1a7f37' : '#1c1c1c';
+}
+
+function startTimer() {
+  if (timerInterval) return; // già in corso
+  if (timerLeft <= 0) { initTimer(timerTotal); } // riparti dall'inizio se finito
+  $('btn-timer-start').textContent  = '⏸ Pausa';
+  $('btn-timer-start').style.background = '#1c1c1c';
+  timerInterval = setInterval(()=>{
+    timerLeft--;
+    updateTimerUI();
+    if (timerLeft <= 0) {
+      stopTimer();
+      $('btn-timer-start').textContent  = '✓ Completato!';
+      $('btn-timer-start').style.background = '#1a7f37';
+      // vibra se il dispositivo lo supporta
+      if (navigator.vibrate) navigator.vibrate([300,100,300]);
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  $('btn-timer-start').textContent = '▶ Riprendi';
+  $('btn-timer-start').style.background = '';
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+$('btn-timer-start').onclick = ()=>{
+  if (timerInterval) pauseTimer();
+  else startTimer();
+};
+$('btn-timer-reset').onclick = ()=>{ initTimer(timerTotal); };
 
 /* ════════════════════════════════════════
    TAB STORICO
