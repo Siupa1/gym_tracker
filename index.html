@@ -233,13 +233,13 @@
     /* timer */
     .timer-wrap { text-align: center; padding: 8px 0 14px; }
     .timer-ring { width: 150px; height: 150px; margin: 0 auto 14px; }
-    .timer-ring svg { transform: rotate(-90deg); }
+    .timer-ring svg { overflow: visible; }
     .tr-bg   { fill: none; stroke: #eee; stroke-width: 9; }
     .tr-fill { fill: none; stroke: #d0021b; stroke-width: 9; stroke-linecap: butt;
                transition: stroke-dashoffset 1s linear; }
     .tr-text { font-size: 28px; font-weight: bold; fill: #1c1c1c;
                text-anchor: middle; dominant-baseline: central;
-               font-family: Arial, sans-serif; transform: rotate(90deg); transform-origin: center; }
+               font-family: Arial, sans-serif; }
     .timer-btns { display: flex; gap: 8px; }
 
     /* riepilogo giro */
@@ -253,6 +253,22 @@
     .sess-end .end-ico { font-size: 52px; margin-bottom: 14px; }
     .sess-end h3 { font-size: 21px; margin-bottom: 8px; }
     .sess-end p  { font-size: 14px; color: #888; margin-bottom: 24px; }
+
+    /* ─── GRAFICO ─── */
+    .chart-wrap { margin-bottom: 14px; }
+    .chart-wrap h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+    .chart-svg { width: 100%; display: block; overflow: visible; }
+    .chart-legend { display: flex; gap: 16px; margin-top: 6px; }
+    .chart-legend span { font-size: 11px; color: #888; display: flex; align-items: center; gap: 5px; }
+    .chart-legend span::before { content:''; display:inline-block; width:14px; height:3px; border-radius:2px; }
+    .leg-reps::before { background:#d0021b; }
+    .leg-kg::before   { background:#1c1c1c; }
+    .chart-tooltip {
+      position: fixed; background: #1c1c1c; color: #fff;
+      font-size: 12px; padding: 5px 9px; pointer-events: none;
+      opacity: 0; transition: opacity .15s; z-index: 500; white-space: nowrap;
+    }
+    .chart-tooltip.visible { opacity: 1; }
 
     /* ─── STORICO ─── */
     .h-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -431,8 +447,10 @@
           <div class="timer-ring">
             <svg width="150" height="150" viewBox="0 0 150 150">
               <circle class="tr-bg"   cx="75" cy="75" r="62"/>
-              <circle class="tr-fill" id="t-circle" cx="75" cy="75" r="62"
-                stroke-dasharray="389.6" stroke-dashoffset="0"/>
+              <g transform="rotate(-90 75 75)">
+                <circle class="tr-fill" id="t-circle" cx="75" cy="75" r="62"
+                  stroke-dasharray="389.6" stroke-dashoffset="0"/>
+              </g>
               <text class="tr-text" id="t-text" x="75" y="75">0:00</text>
             </svg>
           </div>
@@ -512,6 +530,8 @@
     </div>
   </div>
 </div>
+
+<div class="chart-tooltip" id="chart-tooltip"></div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -1191,17 +1211,29 @@ function renderStoria(exId) {
   const filtered=exId
     ? logs.filter(l=>l.exerciseId===exId)
     : logs.filter(l=>l.reps);
-  const sorted=[...filtered].sort((a,b)=>(b.clientTs||0)-(a.clientTs||0));
+  const sorted=[...filtered].sort((a,b)=>(a.clientTs||0)-(b.clientTs||0)); // crescente per grafico
   const cont=$('storia-cont');
   if (!sorted.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
+
+  cont.innerHTML='';
+
+  // grafico solo per singolo esercizio con almeno 2 punti e almeno un valore numerico
+  const hasPeso=sorted.some(l=>l.weight!=null);
+  const hasReps=sorted.some(l=>l.reps!=null);
+  if (exId && sorted.length>=2 && (hasPeso||hasReps)) {
+    cont.appendChild(buildChart(sorted, hasPeso, hasReps));
+  }
+
+  // tabella (ordine decrescente = più recente in cima)
   const showEx=!exId;
+  const desc=[...sorted].reverse();
   const t=el('table'); t.className='h-table';
   t.innerHTML=`<thead><tr>
     ${showEx?'<th>Esercizio</th>':''}
     <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th>
   </tr></thead><tbody></tbody>`;
   const tbody=t.querySelector('tbody');
-  sorted.forEach(log=>{
+  desc.forEach(log=>{
     const ex=exercises.find(e=>e.id===log.exerciseId);
     const tr=el('tr');
     tr.innerHTML=`
@@ -1213,12 +1245,130 @@ function renderStoria(exId) {
       <td><button class="del-row" data-id="${log.id}">✕</button></td>`;
     tbody.appendChild(tr);
   });
-  cont.innerHTML=''; cont.appendChild(t);
+  cont.appendChild(t);
   cont.querySelectorAll('.del-row').forEach(btn=>{
     btn.addEventListener('click',async()=>{
       syncWait(); await deleteDoc(doc(db,'logs',btn.dataset.id));
     });
   });
+}
+
+/* ─── Costruisce il grafico SVG ─── */
+function buildChart(points, hasPeso, hasReps) {
+  const W=320, H=120, PL=36, PR=12, PT=10, PB=24;
+  const iW=W-PL-PR, iH=H-PT-PB;
+  const n=points.length;
+
+  // valori
+  const repsVals=points.map(p=>p.reps??null);
+  const kgVals  =points.map(p=>p.weight??null);
+
+  function scaleY(vals) {
+    const v=vals.filter(x=>x!=null);
+    if (!v.length) return ()=>PT+iH/2;
+    const mn=Math.min(...v), mx=Math.max(...v);
+    const range=mx-mn||1;
+    return val=>val==null?null: PT + iH - ((val-mn)/range)*iH;
+  }
+  const scR=scaleY(repsVals);
+  const scK=scaleY(kgVals);
+
+  function xOf(i) { return PL + (n===1?iW/2:i*(iW/(n-1))); }
+
+  // crea SVG
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('class','chart-svg');
+  svg.style.height='130px';
+
+  // griglia orizzontale leggera
+  for (let k=0;k<=3;k++) {
+    const y=PT+k*(iH/3);
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',PL); line.setAttribute('x2',PL+iW);
+    line.setAttribute('y1',y);  line.setAttribute('y2',y);
+    line.setAttribute('stroke','#eee'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+  }
+
+  // disegna una serie
+  function drawSeries(vals, scale, color) {
+    const valid=vals.map((v,i)=>v!=null?{i,v}:null).filter(Boolean);
+    if (valid.length<2) {
+      // solo punti, nessuna linea
+      valid.forEach(({i,v})=>{
+        const c=document.createElementNS(ns,'circle');
+        c.setAttribute('cx',xOf(i)); c.setAttribute('cy',scale(v));
+        c.setAttribute('r','5'); c.setAttribute('fill',color);
+        svg.appendChild(c);
+      });
+      return;
+    }
+    // polyline
+    const pts=valid.map(({i,v})=>`${xOf(i)},${scale(v)}`).join(' ');
+    const pl=document.createElementNS(ns,'polyline');
+    pl.setAttribute('points',pts);
+    pl.setAttribute('fill','none');
+    pl.setAttribute('stroke',color);
+    pl.setAttribute('stroke-width','2');
+    pl.setAttribute('stroke-linejoin','round');
+    pl.setAttribute('stroke-linecap','round');
+    svg.appendChild(pl);
+    // punti toccabili
+    valid.forEach(({i,v})=>{
+      const c=document.createElementNS(ns,'circle');
+      c.setAttribute('cx',xOf(i)); c.setAttribute('cy',scale(v));
+      c.setAttribute('r','5'); c.setAttribute('fill',color);
+      c.setAttribute('stroke','#fff'); c.setAttribute('stroke-width','2');
+      c.style.cursor='pointer';
+      // tooltip al touch/click
+      const orig=points[i];
+      const label=color==='#d0021b'
+        ? `${v} reps — ${fmtDate(orig.clientTs)}`
+        : `${v} kg — ${fmtDate(orig.clientTs)}`;
+      c.addEventListener('click', e=>showTooltip(e, label));
+      c.addEventListener('touchstart', e=>{ e.preventDefault(); showTooltip(e.touches[0], label); },{passive:false});
+      svg.appendChild(c);
+    });
+  }
+
+  if (hasReps) drawSeries(repsVals, scR, '#d0021b');
+  if (hasPeso) drawSeries(kgVals,   scK, '#1c1c1c');
+
+  // etichette asse X (prima e ultima data)
+  function xLabel(txt, x) {
+    const t=document.createElementNS(ns,'text');
+    t.setAttribute('x',x); t.setAttribute('y',H-4);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size','9');
+    t.setAttribute('fill','#aaa');
+    t.setAttribute('font-family','Arial,sans-serif');
+    t.textContent=txt; svg.appendChild(t);
+  }
+  xLabel(fmtDate(points[0].clientTs), xOf(0));
+  if (n>1) xLabel(fmtDate(points[n-1].clientTs), xOf(n-1));
+
+  // wrapper con legenda
+  const wrap=el('div'); wrap.className='chart-wrap card';
+  const title=el('h4'); title.textContent='Andamento';
+  const leg=el('div'); leg.className='chart-legend';
+  if (hasReps) { const s=el('span'); s.className='leg-reps'; s.textContent='Ripetizioni'; leg.appendChild(s); }
+  if (hasPeso) { const s=el('span'); s.className='leg-kg';   s.textContent='Peso (kg)';  leg.appendChild(s); }
+  wrap.append(title, svg, leg);
+  return wrap;
+}
+
+/* ─── Tooltip ─── */
+const tooltip=$('chart-tooltip');
+let tooltipTimer=null;
+function showTooltip(e, text) {
+  tooltip.textContent=text;
+  tooltip.style.left=(e.clientX+10)+'px';
+  tooltip.style.top =(e.clientY-30)+'px';
+  tooltip.classList.add('visible');
+  clearTimeout(tooltipTimer);
+  tooltipTimer=setTimeout(()=>tooltip.classList.remove('visible'),2000);
 }
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
