@@ -364,9 +364,54 @@
     }
     .btn-primary:active { background: #a80016; }
 
+    /* ── GRIGLIA SELEZIONE ESERCIZIO (tab Log) ── */
+    #log-exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .log-ex-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 6px;
+      border: 2px solid #eee;
+      background: #fff;
+      cursor: pointer;
+      text-align: center;
+    }
+    .log-ex-card:active { border-color: #d0021b; }
+    .log-ex-card.selected {
+      border-color: #d0021b;
+      background: #fff5f5;
+    }
+    .log-ex-card img,
+    .log-ex-card .card-placeholder {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+      flex-shrink: 0;
+    }
+    .log-ex-card .card-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      background: #f2f2f2;
+      color: #aaa;
+    }
+    .log-ex-card .card-name {
+      font-size: 11px;
+      color: #333;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .log-ex-card.selected .card-name { color: #d0021b; font-weight: bold; }
+
     /* ── STORICO ── */
-    #history-exercise-select,
-    #log-exercise-select {
+    #history-exercise-select {
       width: 100%;
       border: 1px solid #ccc;
       padding: 12px 10px;
@@ -375,8 +420,7 @@
       background: #fff;
       outline: none;
     }
-    #history-exercise-select:focus,
-    #log-exercise-select:focus { border-color: #d0021b; }
+    #history-exercise-select:focus { border-color: #d0021b; }
 
     .history-table {
       width: 100%;
@@ -467,9 +511,7 @@
 <div class="page" id="tab-log">
   <div class="card">
     <h2>Seleziona esercizio</h2>
-    <select id="log-exercise-select">
-      <option value="">— scegli —</option>
-    </select>
+    <div id="log-exercise-grid"></div>
   </div>
 
   <div id="log-panel" style="display:none">
@@ -688,8 +730,8 @@
         if (e.target === editBtn || e.target === delBtn) return;
         const tabBtn = document.querySelectorAll('.tabs button')[1];
         switchTab('tab-log', tabBtn);
-        document.getElementById('log-exercise-select').value = ex.id;
-        showLogPanel(ex.id);
+        // seleziona automaticamente la card nella griglia
+        selectLogExercise(ex.id);
       });
 
       actions.appendChild(editBtn);
@@ -786,9 +828,8 @@
       ex.image = modalImage;
       save(db);
       renderExercises();
-      // aggiorna anche il pannello log se quell'esercizio è selezionato
-      const sel = document.getElementById('log-exercise-select').value;
-      if (sel === editingId) showLogPanel(editingId);
+      // aggiorna il pannello log se quell'esercizio è selezionato
+      if (selectedLogId === editingId) showLogPanel(editingId);
     }
     modalOverlay.classList.remove('open');
     modalFileInp.value = '';
@@ -806,7 +847,7 @@
   // TAB LOG
   // ══════════════════════════════════════
 
-  const logSelect  = document.getElementById('log-exercise-select');
+  const logGrid    = document.getElementById('log-exercise-grid');
   const logPanel   = document.getElementById('log-panel');
   const logExName  = document.getElementById('log-exercise-name');
   const lastBadge  = document.getElementById('last-set-badge');
@@ -815,33 +856,64 @@
   const btnLogSet  = document.getElementById('btn-log-set');
   const noLogEx    = document.getElementById('no-log-exercises');
 
+  // id esercizio attualmente selezionato nella griglia
+  let selectedLogId = null;
+
   function setReps(n) { inpReps.value = n; inpWeight.focus(); }
 
-  function refreshLogSelect() {
-    const prev = logSelect.value;
-    logSelect.innerHTML = '<option value="">— scegli —</option>';
+  // costruisce la griglia di card esercizi
+  function refreshLogGrid() {
+    logGrid.innerHTML = '';
+    selectedLogId = null;
+    logPanel.style.display = 'none';
+
     if (db.exercises.length === 0) {
       noLogEx.style.display = 'block';
-      logSelect.parentElement.parentElement.style.display = 'none';
-      logPanel.style.display = 'none';
+      logGrid.parentElement.style.display = 'none';
       return;
     }
     noLogEx.style.display = 'none';
-    logSelect.parentElement.parentElement.style.display = 'block';
+    logGrid.parentElement.style.display = 'block';
+
     db.exercises.forEach(ex => {
-      const opt = document.createElement('option');
-      opt.value       = ex.id;
-      opt.textContent = ex.name;
-      logSelect.appendChild(opt);
+      const card = document.createElement('div');
+      card.className    = 'log-ex-card';
+      card.dataset.exId = ex.id;
+
+      // icona
+      if (ex.image) {
+        const img = document.createElement('img');
+        img.src = ex.image;
+        img.alt = ex.name;
+        card.appendChild(img);
+      } else {
+        const ph = document.createElement('div');
+        ph.className   = 'card-placeholder';
+        ph.textContent = '🏋️';
+        card.appendChild(ph);
+      }
+
+      // nome
+      const nameEl = document.createElement('span');
+      nameEl.className   = 'card-name';
+      nameEl.textContent = ex.name;
+      card.appendChild(nameEl);
+
+      card.addEventListener('click', () => selectLogExercise(ex.id));
+      logGrid.appendChild(card);
     });
-    if (prev && db.exercises.find(e => e.id === prev)) {
-      logSelect.value = prev;
-      showLogPanel(prev);
-    } else {
-      logPanel.style.display = 'none';
-    }
   }
 
+  function selectLogExercise(id) {
+    selectedLogId = id;
+    // evidenzia card selezionata
+    logGrid.querySelectorAll('.log-ex-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.exId === id);
+    });
+    showLogPanel(id);
+  }
+
+  function refreshLogSelect() { refreshLogGrid(); }
   function showLogPanel(id) {
     const ex = db.exercises.find(e => e.id === id);
     if (!ex) { logPanel.style.display = 'none'; return; }
@@ -880,13 +952,8 @@
     inpWeight.value = '';
   }
 
-  logSelect.addEventListener('change', () => {
-    if (logSelect.value) showLogPanel(logSelect.value);
-    else logPanel.style.display = 'none';
-  });
-
   btnLogSet.addEventListener('click', () => {
-    const exId = logSelect.value;
+    const exId = selectedLogId;
     if (!exId) return;
     const reps = parseInt(inpReps.value, 10);
     if (!reps || reps < 1) {
