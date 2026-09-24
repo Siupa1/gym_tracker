@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="GymTracker" />
+  <meta name="theme-color" content="#1c1c1c" />
+  <title>GymTracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      color: #333;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: #1c1c1c;
+      color: #fff;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header .logo {
+      background: #d0021b;
+      color: #fff;
+      font-weight: bold;
+      font-size: 18px;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; }
+
+    /* ── NAVIGAZIONE A SCHEDE ── */
+    .tabs {
+      display: flex;
+      background: #1c1c1c;
+      border-top: 1px solid #333;
+    }
+    .tabs button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #888;
+      padding: 11px 0;
+      font-size: 13px;
+      font-family: Arial, sans-serif;
+      cursor: pointer;
+      letter-spacing: .5px;
+      border-bottom: 3px solid transparent;
+      transition: color .15s;
+    }
+    .tabs button.active {
+      color: #fff;
+      border-bottom: 3px solid #d0021b;
+    }
+
+    /* ── CONTAINER ── */
+    .page { display: none; padding: 16px; }
+    .page.active { display: block; }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+
+    /* ── FORM AGGIUNGI ESERCIZIO ── */
+    .add-form { display: flex; gap: 8px; }
+    .add-form input {
+      flex: 1;
+      border: 1px solid #ccc;
+      padding: 12px 10px;
+      font-size: 16px; /* 16px evita lo zoom automatico su iOS */
+      outline: none;
+    }
+    .add-form input:focus { border-color: #d0021b; }
+    .add-form button {
+      background: #d0021b;
+      color: #fff;
+      border: none;
+      padding: 12px 18px;
+      font-size: 22px;
+      cursor: pointer;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .add-form button:active { background: #a80016; }
+
+    /* ── LISTA ESERCIZI ── */
+    #exercise-list { list-style: none; }
+    #exercise-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 12px;
+      border: 1px solid #eee;
+      margin-bottom: 6px;
+      background: #fff;
+      cursor: pointer;
+      min-height: 52px;
+    }
+    #exercise-list li:nth-child(even) { background: #f9f9f9; }
+    #exercise-list li:active { background: #1c1c1c; color: #fff; }
+
+    #exercise-list li .ex-name { font-size: 15px; flex: 1; }
+    #exercise-list li .ex-del {
+      background: none;
+      border: 1px solid #ccc;
+      color: #888;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 6px 12px;
+      min-width: 44px;
+      min-height: 36px;
+    }
+    #exercise-list li .ex-del:active { background: #d0021b; color: #fff; border-color: #d0021b; }
+
+    /* ── PAGINA LOG ── */
+    #log-exercise-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1c1c1c;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    #log-exercise-name span {
+      color: #d0021b;
+    }
+
+    .log-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .log-inputs label {
+      font-size: 12px;
+      color: #888;
+      display: block;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .log-inputs input {
+      width: 100%;
+      border: 1px solid #ccc;
+      padding: 14px 10px;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+    }
+    .log-inputs input:focus { border-color: #d0021b; border-width: 2px; }
+
+    /* bottoni rapidi ripetizioni */
+    .quick-reps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .quick-reps button {
+      flex: 1;
+      min-width: 48px;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px 0;
+      font-size: 15px;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+    }
+    .quick-reps button:active { background: #1c1c1c; color: #fff; border-color: #1c1c1c; }
+
+    .btn-primary {
+      width: 100%;
+      background: #d0021b;
+      color: #fff;
+      border: none;
+      padding: 16px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      font-family: Arial, sans-serif;
+      letter-spacing: .5px;
+    }
+    .btn-primary:active { background: #a80016; }
+
+    /* ── STORICO ── */
+    #history-exercise-select {
+      width: 100%;
+      border: 1px solid #ccc;
+      padding: 12px 10px;
+      font-size: 15px;
+      font-family: Arial, sans-serif;
+      background: #fff;
+      outline: none;
+      margin-bottom: 14px;
+    }
+    #history-exercise-select:focus { border-color: #d0021b; }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .history-table thead tr {
+      background: #1c1c1c;
+      color: #fff;
+    }
+    .history-table th {
+      text-align: left;
+      padding: 10px 10px;
+      font-weight: normal;
+      letter-spacing: .4px;
+    }
+    .history-table td { padding: 10px 10px; border-bottom: 1px solid #eee; }
+    .history-table tr:nth-child(even) td { background: #f9f9f9; }
+    .history-table .del-row {
+      background: none;
+      border: 1px solid #d0021b;
+      color: #d0021b;
+      cursor: pointer;
+      padding: 4px 10px;
+      font-size: 12px;
+      min-height: 32px;
+    }
+    .history-table .del-row:active { background: #d0021b; color: #fff; }
+
+    .empty-msg {
+      color: #888;
+      font-size: 14px;
+      text-align: center;
+      padding: 28px 0;
+    }
+
+    /* ── BADGE ULTIMO SET ── */
+    #last-set-badge {
+      background: #f9f9f9;
+      border: 1px solid #eee;
+      border-left: 4px solid #1a7f37;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 14px;
+      display: none;
+    }
+    #last-set-badge strong { color: #1a7f37; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #ccc; }
+    ::-webkit-scrollbar-thumb:hover { background: #d0021b; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">G</div>
+  <h1>GYM TRACKER</h1>
+</header>
+
+<!-- Navigazione a 3 schede -->
+<div class="tabs">
+  <button class="active" onclick="switchTab('tab-exercises', this)">Esercizi</button>
+  <button onclick="switchTab('tab-log', this)">Registra</button>
+  <button onclick="switchTab('tab-history', this)">Storico</button>
+</div>
+
+<!-- ══ TAB 1: ESERCIZI ══ -->
+<div class="page active" id="tab-exercises">
+  <div class="card">
+    <h2>Aggiungi esercizio</h2>
+    <div class="add-form">
+      <input type="text" id="new-exercise" placeholder="Es. Panca piana…" maxlength="60"
+             inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button id="btn-add-exercise" title="Aggiungi">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>I tuoi esercizi</h2>
+    <ul id="exercise-list"></ul>
+    <div class="empty-msg" id="no-exercises" style="display:none">Nessun esercizio. Aggiungine uno!</div>
+  </div>
+</div>
+
+<!-- ══ TAB 2: REGISTRA SET ══ -->
+<div class="page" id="tab-log">
+  <div class="card">
+    <h2>Seleziona esercizio</h2>
+    <select id="log-exercise-select">
+      <option value="">— scegli —</option>
+    </select>
+  </div>
+
+  <div id="log-panel" style="display:none">
+    <div id="log-exercise-name"></div>
+
+    <!-- ultimo set registrato -->
+    <div id="last-set-badge"></div>
+
+    <div class="card">
+      <h2>Set</h2>
+      <div class="log-inputs">
+        <div>
+          <label for="inp-reps">Ripetizioni *</label>
+          <input type="number" id="inp-reps" min="1" max="999"
+                 inputmode="numeric" pattern="[0-9]*" placeholder="0" />
+        </div>
+        <div>
+          <label for="inp-weight">Peso kg</label>
+          <input type="number" id="inp-weight" min="0" max="9999" step="0.5"
+                 inputmode="decimal" placeholder="—" />
+        </div>
+      </div>
+
+      <!-- scorciatoie reps comuni -->
+      <div class="quick-reps" id="quick-reps-row">
+        <button onclick="setReps(6)">6</button>
+        <button onclick="setReps(8)">8</button>
+        <button onclick="setReps(10)">10</button>
+        <button onclick="setReps(12)">12</button>
+        <button onclick="setReps(15)">15</button>
+        <button onclick="setReps(20)">20</button>
+      </div>
+
+      <button class="btn-primary" id="btn-log-set">💾 Salva set</button>
+    </div>
+  </div>
+
+  <div class="empty-msg" id="no-log-exercises" style="display:none">
+    Nessun esercizio. Vai nella scheda "Esercizi" e aggiungine uno.
+  </div>
+</div>
+
+<!-- ══ TAB 3: STORICO ══ -->
+<div class="page" id="tab-history">
+  <div class="card">
+    <h2>Esercizio</h2>
+    <select id="history-exercise-select">
+      <option value="">— scegli —</option>
+    </select>
+  </div>
+
+  <div class="card" id="history-card">
+    <h2>Log</h2>
+    <div id="history-content">
+      <div class="empty-msg">Seleziona un esercizio per vedere lo storico.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── storage ──
+  const KEY = 'gymtracker_v1';
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || { exercises: [], logs: [] }; }
+    catch { return { exercises: [], logs: [] }; }
+  }
+  function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+
+  let db = load();
+
+  // ── uid ──
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  // ── formato data/ora italiano ──
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  }
+  function fmtTime(ts) {
+    return new Date(ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── cambio tab ──
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+
+    // aggiorna select quando si apre Log o Storico
+    if (tabId === 'tab-log')     refreshLogSelect();
+    if (tabId === 'tab-history') refreshHistorySelect();
+  }
+
+  // ══ TAB ESERCIZI ══
+
+  const exerciseList  = document.getElementById('exercise-list');
+  const noExercises   = document.getElementById('no-exercises');
+  const newExInput    = document.getElementById('new-exercise');
+  const btnAddEx      = document.getElementById('btn-add-exercise');
+
+  function renderExercises() {
+    exerciseList.innerHTML = '';
+    noExercises.style.display = db.exercises.length === 0 ? 'block' : 'none';
+
+    db.exercises.forEach(ex => {
+      const li = document.createElement('li');
+
+      const span = document.createElement('span');
+      span.className = 'ex-name';
+      span.textContent = ex.name;
+
+      const del = document.createElement('button');
+      del.className = 'ex-del';
+      del.textContent = 'Elimina';
+
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!confirm(`Eliminare "${ex.name}" e tutto il suo storico?`)) return;
+        db.exercises = db.exercises.filter(x => x.id !== ex.id);
+        db.logs      = db.logs.filter(l => l.exerciseId !== ex.id);
+        save(db);
+        renderExercises();
+      });
+
+      // tap sull'esercizio → vai direttamente a "Registra" con quell'esercizio preselezionato
+      li.addEventListener('click', e => {
+        if (e.target === del) return;
+        const tabBtn = document.querySelectorAll('.tabs button')[1];
+        switchTab('tab-log', tabBtn);
+        document.getElementById('log-exercise-select').value = ex.id;
+        showLogPanel(ex.id);
+      });
+
+      li.appendChild(span);
+      li.appendChild(del);
+      exerciseList.appendChild(li);
+    });
+  }
+
+  function addExercise() {
+    const name = newExInput.value.trim();
+    if (!name) return;
+    if (db.exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+      alert('Esercizio già presente.');
+      return;
+    }
+    const ex = { id: uid(), name };
+    db.exercises.push(ex);
+    save(db);
+    newExInput.value = '';
+    renderExercises();
+  }
+
+  btnAddEx.addEventListener('click', addExercise);
+  newExInput.addEventListener('keydown', e => { if (e.key === 'Enter') addExercise(); });
+
+  // ══ TAB LOG ══
+
+  const logSelect    = document.getElementById('log-exercise-select');
+  const logPanel     = document.getElementById('log-panel');
+  const logExName    = document.getElementById('log-exercise-name');
+  const lastBadge    = document.getElementById('last-set-badge');
+  const inpReps      = document.getElementById('inp-reps');
+  const inpWeight    = document.getElementById('inp-weight');
+  const btnLogSet    = document.getElementById('btn-log-set');
+  const noLogEx      = document.getElementById('no-log-exercises');
+
+  // imposta reps dai pulsanti rapidi
+  function setReps(n) { inpReps.value = n; inpWeight.focus(); }
+
+  function refreshLogSelect() {
+    const prev = logSelect.value;
+    logSelect.innerHTML = '<option value="">— scegli —</option>';
+    if (db.exercises.length === 0) {
+      noLogEx.style.display = 'block';
+      logSelect.parentElement.parentElement.style.display = 'none';
+      logPanel.style.display = 'none';
+      return;
+    }
+    noLogEx.style.display = 'none';
+    logSelect.parentElement.parentElement.style.display = 'block';
+    db.exercises.forEach(ex => {
+      const opt = document.createElement('option');
+      opt.value = ex.id;
+      opt.textContent = ex.name;
+      logSelect.appendChild(opt);
+    });
+    if (prev && db.exercises.find(e => e.id === prev)) {
+      logSelect.value = prev;
+      showLogPanel(prev);
+    } else {
+      logPanel.style.display = 'none';
+    }
+  }
+
+  function showLogPanel(id) {
+    const ex = db.exercises.find(e => e.id === id);
+    if (!ex) { logPanel.style.display = 'none'; return; }
+
+    logPanel.style.display = 'block';
+    logExName.innerHTML = `<span>${ex.name}</span>`;
+
+    // mostra l'ultimo set registrato per questo esercizio
+    const lastLog = db.logs
+      .filter(l => l.exerciseId === id)
+      .sort((a, b) => b.ts - a.ts)[0];
+
+    if (lastLog) {
+      const wStr = lastLog.weight !== null ? ` · ${lastLog.weight} kg` : '';
+      lastBadge.innerHTML = `Ultimo: <strong>${lastLog.reps} reps${wStr}</strong> — ${fmtDate(lastLog.ts)} ${fmtTime(lastLog.ts)}`;
+      lastBadge.style.display = 'block';
+    } else {
+      lastBadge.style.display = 'none';
+    }
+
+    inpReps.value   = '';
+    inpWeight.value = '';
+  }
+
+  logSelect.addEventListener('change', () => {
+    if (logSelect.value) showLogPanel(logSelect.value);
+    else logPanel.style.display = 'none';
+  });
+
+  btnLogSet.addEventListener('click', () => {
+    const exId = logSelect.value;
+    if (!exId) return;
+
+    const reps = parseInt(inpReps.value, 10);
+    if (!reps || reps < 1) {
+      inpReps.style.borderColor = '#d0021b';
+      inpReps.style.borderWidth = '2px';
+      inpReps.focus();
+      setTimeout(() => { inpReps.style.borderColor = ''; inpReps.style.borderWidth = ''; }, 1500);
+      return;
+    }
+
+    const weightVal = inpWeight.value.trim();
+    const weight    = weightVal !== '' ? parseFloat(weightVal) : null;
+
+    db.logs.push({ id: uid(), exerciseId: exId, reps, weight, ts: Date.now() });
+    save(db);
+
+    // feedback visivo
+    btnLogSet.textContent = '✓ Salvato!';
+    btnLogSet.style.background = '#1a7f37';
+    setTimeout(() => {
+      btnLogSet.textContent = '💾 Salva set';
+      btnLogSet.style.background = '';
+    }, 1200);
+
+    inpReps.value   = '';
+    inpWeight.value = '';
+    showLogPanel(exId); // aggiorna badge ultimo set
+  });
+
+  // ══ TAB STORICO ══
+
+  const historySelect  = document.getElementById('history-exercise-select');
+  const historyContent = document.getElementById('history-content');
+
+  function refreshHistorySelect() {
+    const prev = historySelect.value;
+    historySelect.innerHTML = '<option value="">— scegli —</option>';
+    db.exercises.forEach(ex => {
+      const opt = document.createElement('option');
+      opt.value = ex.id;
+      opt.textContent = ex.name;
+      historySelect.appendChild(opt);
+    });
+    if (prev && db.exercises.find(e => e.id === prev)) {
+      historySelect.value = prev;
+      renderHistory(prev);
+    } else {
+      historyContent.innerHTML = '<div class="empty-msg">Seleziona un esercizio per vedere lo storico.</div>';
+    }
+  }
+
+  function renderHistory(id) {
+    const logs = db.logs.filter(l => l.exerciseId === id).sort((a, b) => b.ts - a.ts);
+
+    if (logs.length === 0) {
+      historyContent.innerHTML = '<div class="empty-msg">Nessun set registrato per questo esercizio.</div>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'history-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Ora</th>
+          <th>Reps</th>
+          <th>Kg</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector('tbody');
+
+    logs.forEach(log => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${fmtDate(log.ts)}</td>
+        <td>${fmtTime(log.ts)}</td>
+        <td><strong>${log.reps}</strong></td>
+        <td>${log.weight !== null ? log.weight : '—'}</td>
+        <td><button class="del-row" data-id="${log.id}">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    historyContent.innerHTML = '';
+    historyContent.appendChild(table);
+
+    // elimina singolo log
+    historyContent.querySelectorAll('.del-row').forEach(btn => {
+      btn.addEventListener('click', () => {
+        db.logs = db.logs.filter(l => l.id !== btn.dataset.id);
+        save(db);
+        renderHistory(id);
+      });
+    });
+  }
+
+  historySelect.addEventListener('change', () => {
+    if (historySelect.value) renderHistory(historySelect.value);
+    else historyContent.innerHTML = '<div class="empty-msg">Seleziona un esercizio per vedere lo storico.</div>';
+  });
+
+  // ── avvio ──
+  renderExercises();
+  refreshLogSelect();
+</script>
+</body>
+</html>
