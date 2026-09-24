@@ -342,8 +342,8 @@
       <input class="inp" type="text" id="scheda-name-inp" placeholder="Nome scheda…" maxlength="60"
              autocomplete="off" style="margin-bottom:10px" />
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-full" id="btn-annulla-editor">Annulla</button>
-        <button class="btn btn-red btn-full"   id="btn-salva-scheda">Salva scheda</button>
+        <button class="btn btn-ghost btn-full" type="button" id="btn-annulla-editor">Annulla</button>
+        <button class="btn btn-red btn-full"   type="button" id="btn-salva-scheda">Salva scheda</button>
       </div>
     </div>
 
@@ -853,7 +853,7 @@ function renderBlocchiEditor() {
       <div class="blocco-header">
         <span class="b-title">${blocco.name}</span>
         <span class="b-giri">${blocco.giri} gir${blocco.giri===1?'o':'i'}</span>
-        <button class="b-del" data-bi="${bi}">✕</button>
+        <button type="button" class="b-del" data-bi="${bi}">✕</button>
       </div>
       <div class="blocco-body">
         <ul class="blocco-ex-list" id="bel-${blocco.localId}"></ul>
@@ -869,7 +869,7 @@ function renderBlocchiEditor() {
           </select>
           <input type="number" id="inp-durata-${blocco.localId}" min="1" max="3600" placeholder="sec"
             style="display:none;width:60px;border:1px solid #ccc;padding:8px 6px;font-size:13px;font-family:Arial,sans-serif;outline:none" />
-          <button class="btn btn-dark" style="padding:8px 12px;font-size:13px" data-bid="${blocco.localId}">+</button>
+          <button type="button" class="btn btn-dark" style="padding:8px 12px;font-size:13px" data-bid="${blocco.localId}">+</button>
         </div>
       </div>`;
     div.querySelector('.b-del').onclick = ()=>{
@@ -915,7 +915,7 @@ function renderBloccoExList(blocco) {
       ${iconEl}
       <span class="bei-name">${ex.name}</span>
       <span class="bei-tag">${item.tipo==='peso'?'Peso':item.tipo==='tempo'?`⏱ ${fmtSec(item.durata||60)}`:'Solo'}</span>
-      <button class="bei-del" data-ei="${ei}">✕</button>`;
+      <button type="button" class="bei-del" data-ei="${ei}">✕</button>`;
     li.querySelector('.bei-del').onclick = ()=>{
       blocco.esercizi.splice(ei,1); renderBlocchiEditor();
     };
