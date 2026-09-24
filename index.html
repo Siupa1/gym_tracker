@@ -821,16 +821,25 @@ $('btn-salva-scheda').onclick = async ()=>{
     blocchi: editingBlocchi.map(b=>({
       name: b.name,
       giri: b.giri,
-      esercizi: b.esercizi.map(e=>({exId:e.exId, sovraccarico:e.sovraccarico}))
+      esercizi: b.esercizi.map(e=>({
+        exId:   e.exId,
+        tipo:   e.tipo   || 'solo',
+        durata: e.durata || null
+      }))
     }))
   };
-  if (editingSchedaId) {
-    await updateDoc(doc(db,'schede',editingSchedaId), data);
-  } else {
-    data.createdAt = serverTimestamp();
-    await addDoc(colSchede, data);
+  try {
+    if (editingSchedaId) {
+      await updateDoc(doc(db,'schede',editingSchedaId), data);
+    } else {
+      data.createdAt = serverTimestamp();
+      await addDoc(colSchede, data);
+    }
+    closeSchedaEditor();
+  } catch(err) {
+    alert('Errore salvataggio: ' + err.message);
+    syncErr();
   }
-  closeSchedaEditor();
 };
 
 /* ── render editor blocchi ── */
