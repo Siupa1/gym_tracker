@@ -1026,12 +1026,13 @@
   function renderHistorySelect() {
     const prev = historySelect.value;
     historySelect.innerHTML = '<option value="">— scegli —</option>';
+    historySelect.innerHTML += '<option value="__all__">Tutti gli esercizi</option>';
     exercises.forEach(ex => {
       const opt = document.createElement('option');
       opt.value = ex.id; opt.textContent = ex.name;
       historySelect.appendChild(opt);
     });
-    if (prev && exercises.find(e => e.id === prev)) {
+    if (prev && (prev === '__all__' || exercises.find(e => e.id === prev))) {
       historySelect.value = prev;
       renderHistory(prev);
     } else {
@@ -1040,8 +1041,9 @@
   }
 
   function renderHistory(id) {
+    const showAll = id === '__all__';
     const exLogs = logs
-      .filter(l => l.exerciseId === id)
+      .filter(l => showAll || l.exerciseId === id)
       .sort((a, b) => {
         const at = a.clientTs ?? a.createdAt?.toMillis?.() ?? 0;
         const bt = b.clientTs ?? b.createdAt?.toMillis?.() ?? 0;
@@ -1055,16 +1057,20 @@
 
     const table = document.createElement('table');
     table.className = 'history-table';
+    // colonna esercizio visibile solo in modalità "tutti"
     table.innerHTML = `
       <thead><tr>
+        ${showAll ? '<th>Esercizio</th>' : ''}
         <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th>
       </tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
 
     exLogs.forEach(log => {
       const ts = log.clientTs ?? log.createdAt;
+      const exName = showAll ? (exercises.find(e => e.id === log.exerciseId)?.name ?? '—') : null;
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        ${showAll ? `<td style="font-size:12px;color:#888">${exName}</td>` : ''}
         <td>${fmtDate(ts)}</td>
         <td>${fmtTime(ts)}</td>
         <td><strong>${log.reps}</strong></td>
