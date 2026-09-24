@@ -674,13 +674,18 @@
   }
 
   // ── formati data/ora ──
+  // ts può essere: Firestore Timestamp, numero (ms), o null
+  function tsToDate(ts) {
+    if (!ts) return new Date();
+    if (typeof ts.toDate === 'function') return ts.toDate(); // Firestore Timestamp
+    if (typeof ts === 'number') return new Date(ts);         // epoch ms
+    return new Date(ts);
+  }
   function fmtDate(ts) {
-    const d = ts?.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    return tsToDate(ts).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
   }
   function fmtTime(ts) {
-    const d = ts?.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    return tsToDate(ts).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
   }
 
   // ── ridimensiona immagine 80x80 JPEG base64 ──
@@ -968,15 +973,16 @@
     const exLogs = logs.filter(l => l.exerciseId === id);
     const lastLog = exLogs.length
       ? exLogs.reduce((a, b) => {
-          const at = a.createdAt?.toMillis?.() ?? 0;
-          const bt = b.createdAt?.toMillis?.() ?? 0;
+          const at = a.clientTs ?? a.createdAt?.toMillis?.() ?? 0;
+          const bt = b.clientTs ?? b.createdAt?.toMillis?.() ?? 0;
           return bt > at ? b : a;
         })
       : null;
 
     if (lastLog) {
+      const ts   = lastLog.clientTs ?? lastLog.createdAt;
       const wStr = lastLog.weight != null ? ` · ${lastLog.weight} kg` : '';
-      lastBadge.innerHTML = `Ultimo: <strong>${lastLog.reps} reps${wStr}</strong> — ${fmtDate(lastLog.createdAt)} ${fmtTime(lastLog.createdAt)}`;
+      lastBadge.innerHTML = `Ultimo: <strong>${lastLog.reps} reps${wStr}</strong> — ${fmtDate(ts)} ${fmtTime(ts)}`;
       lastBadge.style.display = 'block';
     } else {
       lastBadge.style.display = 'none';
@@ -1001,7 +1007,8 @@
       exerciseId: selectedLogId,
       reps,
       weight,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      clientTs: Date.now()          // timestamp client, sempre disponibile subito
     });
 
     btnLogSet.textContent      = '✓ Salvato!';
@@ -1036,8 +1043,8 @@
     const exLogs = logs
       .filter(l => l.exerciseId === id)
       .sort((a, b) => {
-        const at = a.createdAt?.toMillis?.() ?? 0;
-        const bt = b.createdAt?.toMillis?.() ?? 0;
+        const at = a.clientTs ?? a.createdAt?.toMillis?.() ?? 0;
+        const bt = b.clientTs ?? b.createdAt?.toMillis?.() ?? 0;
         return bt - at;
       });
 
@@ -1055,10 +1062,11 @@
     const tbody = table.querySelector('tbody');
 
     exLogs.forEach(log => {
+      const ts = log.clientTs ?? log.createdAt;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${fmtDate(log.createdAt)}</td>
-        <td>${fmtTime(log.createdAt)}</td>
+        <td>${fmtDate(ts)}</td>
+        <td>${fmtTime(ts)}</td>
         <td><strong>${log.reps}</strong></td>
         <td>${log.weight != null ? log.weight : '—'}</td>
         <td><button class="del-row" data-id="${log.id}">✕</button></td>`;
