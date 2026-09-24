@@ -842,6 +842,9 @@ $('btn-salva-scheda').onclick = async ()=>{
   }
 };
 
+/* ── stato pendente add-esercizio per ogni blocco (tipo scelto prima di premere +) ── */
+const pendingTipo = {}; // localId → {tipo, durata}
+
 /* ── render editor blocchi ── */
 function renderBlocchiEditor() {
   const cont = $('blocchi-container');
@@ -880,18 +883,33 @@ function renderBlocchiEditor() {
       const selTipo= $(`sel-tipo-${blocco.localId}`);
       const inpDur = $(`inp-durata-${blocco.localId}`);
       if (!sel.value) return;
-      const tipo = selTipo.value;
+      const tipo   = selTipo.value;
       const durata = tipo==='tempo' ? (parseInt(inpDur.value)||60) : null;
       blocco.esercizi.push({localId:uid(), exId:sel.value, tipo, durata});
-      sel.value=''; selTipo.value='solo'; inpDur.value=''; inpDur.style.display='none';
+      // resetta stato pendente per questo blocco
+      pendingTipo[blocco.localId] = {tipo:'solo', durata:''};
       renderBlocchiEditor();
     };
-    // mostra campo durata solo per "tempo"
+    // ripristina tipo selezionato prima del re-render e aggancia listener
     setTimeout(()=>{
       const selTipo = $(`sel-tipo-${blocco.localId}`);
       const inpDur  = $(`inp-durata-${blocco.localId}`);
-      if (selTipo) selTipo.addEventListener('change', ()=>{
+      if (!selTipo) return;
+      // ripristina valore salvato
+      const saved = pendingTipo[blocco.localId];
+      if (saved) {
+        selTipo.value = saved.tipo;
+        if (saved.tipo==='tempo') { inpDur.style.display='block'; inpDur.value=saved.durata||''; }
+      }
+      // salva ogni cambio in pendingTipo
+      selTipo.addEventListener('change', ()=>{
+        if (!pendingTipo[blocco.localId]) pendingTipo[blocco.localId]={};
+        pendingTipo[blocco.localId].tipo = selTipo.value;
         inpDur.style.display = selTipo.value==='tempo' ? 'block' : 'none';
+      });
+      inpDur.addEventListener('input', ()=>{
+        if (!pendingTipo[blocco.localId]) pendingTipo[blocco.localId]={};
+        pendingTipo[blocco.localId].durata = inpDur.value;
       });
     }, 0);
     cont.appendChild(div);
