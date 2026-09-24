@@ -2,278 +2,305 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="GymTracker" />
   <meta name="theme-color" content="#1c1c1c" />
   <title>GymTracker</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body { font-family: Arial, sans-serif; background: #f2f2f2; color: #333; min-height: 100vh; padding-bottom: 60px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* disabilita evidenziazione tap blu iOS */
+    * { -webkit-tap-highlight-color: transparent; }
 
-    /* ── HEADER ── */
-    header {
-      background: #1c1c1c; color: #fff; padding: 0 16px; height: 52px;
-      display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100;
+    html, body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      color: #333;
+      min-height: 100%;
+      /* evita bounce scroll che disturba i tap */
+      overscroll-behavior: none;
     }
-    header .logo {
+    body { padding-bottom: 80px; }
+
+    /* ─── HEADER ─── */
+    header {
+      background: #1c1c1c; color: #fff;
+      padding: 0 16px; height: 54px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo {
       background: #d0021b; color: #fff; font-weight: bold; font-size: 18px;
-      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
     header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; flex: 1; }
-    #sync-indicator { font-size: 11px; color: #888; }
-    #sync-indicator.ok    { color: #1a7f37; }
-    #sync-indicator.error { color: #d0021b; }
+    #sync { font-size: 13px; color: #888; }
+    #sync.ok    { color: #1a7f37; }
+    #sync.error { color: #d0021b; }
 
-    /* ── TABS ── */
-    .tabs { display: flex; background: #1c1c1c; border-top: 1px solid #333; position: sticky; top: 52px; z-index: 99; }
-    .tabs button {
-      flex: 1; background: none; border: none; color: #888; padding: 10px 0;
-      font-size: 11px; font-family: Arial, sans-serif; cursor: pointer; letter-spacing: .4px;
-      border-bottom: 3px solid transparent; line-height: 1.3;
+    /* ─── TABS ─── */
+    nav.tabs {
+      display: flex; background: #1c1c1c;
+      border-top: 1px solid #2a2a2a;
+      position: sticky; top: 54px; z-index: 99;
     }
-    .tabs button.active { color: #fff; border-bottom: 3px solid #d0021b; }
+    nav.tabs button {
+      flex: 1; background: none; border: none; border-bottom: 3px solid transparent;
+      color: #777; padding: 11px 4px; font-size: 11px; font-family: Arial, sans-serif;
+      cursor: pointer; line-height: 1.3;
+      /* area tap generosa */
+      min-height: 44px;
+    }
+    nav.tabs button.active { color: #fff; border-bottom-color: #d0021b; }
 
-    /* ── PAGE ── */
-    .page { display: none; padding: 16px; }
+    /* ─── PAGE ─── */
+    .page { display: none; padding: 14px; }
     .page.active { display: block; }
 
-    /* ── CARD ── */
+    /* ─── CARD ─── */
     .card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
     .card h2 {
       font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
       color: #888; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px;
     }
 
-    /* ── INPUT COMUNE ── */
+    /* ─── INPUTS ─── */
     .inp {
-      width: 100%; border: 1px solid #ccc; padding: 12px 10px;
-      font-size: 16px; outline: none; font-family: Arial, sans-serif; background: #fff;
+      width: 100%; border: 1px solid #ccc; padding: 13px 12px;
+      font-size: 16px; font-family: Arial, sans-serif; background: #fff;
+      outline: none; -webkit-appearance: none; border-radius: 0;
     }
     .inp:focus { border-color: #d0021b; }
-    select.inp { appearance: none; }
 
-    /* ── BOTTONI ── */
-    .btn { border: none; cursor: pointer; font-family: Arial, sans-serif; padding: 12px 16px; font-size: 14px; }
-    .btn-red   { background: #d0021b; color: #fff; font-weight: bold; }
+    /* ─── BOTTONI — tutti min 52px di altezza per iOS ─── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 52px; padding: 0 16px;
+      border: none; font-family: Arial, sans-serif; font-size: 15px;
+      cursor: pointer; font-weight: bold; letter-spacing: .3px;
+      /* evita doppio-fire click+touchend: gestito via JS */
+      touch-action: manipulation;
+    }
+    .btn-full  { width: 100%; }
+    .btn-red   { background: #d0021b; color: #fff; }
     .btn-red:active   { background: #a80016; }
     .btn-dark  { background: #1c1c1c; color: #fff; }
-    .btn-dark:active  { background: #333; }
-    .btn-ghost { background: none; border: 1px solid #ccc; color: #555; }
-    .btn-ghost:active { background: #eee; }
-    .btn-ghost-red { background: none; border: 1px solid #d0021b; color: #d0021b; }
+    .btn-dark:active  { background: #444; }
+    .btn-ghost { background: #fff; border: 1px solid #ccc; color: #555; font-weight: normal; }
+    .btn-ghost:active { background: #f0f0f0; }
+    .btn-ghost-red { background: #fff; border: 1px solid #d0021b; color: #d0021b; font-weight: normal; }
     .btn-ghost-red:active { background: #d0021b; color: #fff; }
-    .btn-green { background: #1a7f37; color: #fff; font-weight: bold; }
+    .btn-green { background: #1a7f37; color: #fff; }
     .btn-green:active { background: #155d28; }
-    .btn-full { width: 100%; display: block; }
+    .btn-sm { min-height: 38px; font-size: 13px; font-weight: normal; padding: 0 12px; }
 
-    .empty-msg { color: #888; font-size: 14px; text-align: center; padding: 28px 0; }
+    .empty-msg { color: #aaa; font-size: 14px; text-align: center; padding: 32px 0; }
 
-    /* ── ESERCIZI: lista ── */
+    /* ─── ESERCIZI ─── */
     #exercise-list { list-style: none; }
     #exercise-list li {
-      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-      border: 1px solid #eee; margin-bottom: 6px; background: #fff; min-height: 58px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: 1px solid #eee; margin-bottom: 6px;
+      background: #fff; min-height: 60px;
     }
     #exercise-list li:nth-child(even) { background: #f9f9f9; }
-    .ex-icon { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
-    .ex-icon-ph {
-      width: 44px; height: 44px; background: #eee; border: 1px solid #ddd;
-      display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
-    }
-    .ex-name { font-size: 15px; flex: 1; }
-    .ex-actions { display: flex; gap: 6px; }
-    .ex-actions button {
-      background: none; border: 1px solid #ccc; color: #888; cursor: pointer;
-      font-size: 12px; padding: 5px 9px; min-height: 34px; font-family: Arial, sans-serif;
-    }
-    .ex-actions .btn-del:active  { background: #d0021b; color: #fff; border-color: #d0021b; }
-    .ex-actions .btn-edit:active { background: #1c1c1c; color: #fff; }
+    .ex-icon    { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
+    .ex-icon-ph { width: 44px; height: 44px; background: #eee; border: 1px solid #ddd;
+                  display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .ex-name    { font-size: 15px; flex: 1; }
+    .ex-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .ex-actions button { min-height: 40px; padding: 0 10px; font-size: 13px;
+                         background: none; border: 1px solid #ccc; color: #888;
+                         cursor: pointer; font-family: Arial, sans-serif; }
+    .ex-actions .btn-del:active { background: #d0021b; color: #fff; border-color: #d0021b; }
 
-    /* ── upload immagine ── */
+    /* ─── UPLOAD IMMAGINE ─── */
     .img-upload-area {
-      display: flex; align-items: center; gap: 10px; border: 1px dashed #ccc;
-      padding: 10px 12px; cursor: pointer; background: #f9f9f9; font-size: 13px; color: #555;
+      display: flex; align-items: center; gap: 10px;
+      border: 1px dashed #ccc; padding: 12px;
+      background: #f9f9f9; font-size: 13px; color: #555; cursor: pointer;
+      min-height: 52px;
     }
-    .img-upload-area:active { border-color: #d0021b; }
-    .img-preview { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; display: none; }
+    .img-preview { width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; display: none; }
     .img-preview.visible { display: block; }
 
-    /* ── TIMER ── */
-    .timer-display {
-      font-size: 64px; font-weight: bold; text-align: center; letter-spacing: 2px;
-      color: #1c1c1c; margin: 10px 0;
-    }
-    .timer-display.running { color: #d0021b; }
-    .timer-display.done    { color: #1a7f37; }
-    .timer-ring {
-      width: 140px; height: 140px; margin: 0 auto 12px;
-      position: relative; display: flex; align-items: center; justify-content: center;
-    }
-    .timer-ring svg { position: absolute; top:0; left:0; transform: rotate(-90deg); }
-    .timer-ring .tr-bg   { fill: none; stroke: #eee; stroke-width: 8; }
-    .timer-ring .tr-fill { fill: none; stroke: #d0021b; stroke-width: 8; stroke-linecap: butt; transition: stroke-dashoffset .9s linear; }
-    .timer-ring .tr-text { font-size: 26px; font-weight: bold; fill: #1c1c1c; text-anchor: middle; dominant-baseline: central; font-family: Arial, sans-serif; }
-    .timer-btns { display: flex; gap: 8px; margin-bottom: 10px; }
-
-    /* ── SCHEDE: lista schede ── */
+    /* ─── SCHEDE LISTA ─── */
     .scheda-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 12px; border: 1px solid #eee; margin-bottom: 6px; background: #fff; cursor: pointer;
+      border: 1px solid #eee; margin-bottom: 6px; background: #fff; padding: 12px;
     }
     .scheda-row:nth-child(even) { background: #f9f9f9; }
-    .scheda-row .s-name { font-size: 15px; font-weight: bold; flex: 1; }
-    .scheda-row .s-sub  { font-size: 12px; color: #888; margin-top: 2px; }
-    .scheda-row .s-info { flex: 1; }
-    .scheda-row .s-btn  { display: flex; gap: 6px; }
-    .scheda-active-badge {
-      background: #d0021b; color: #fff; font-size: 10px; padding: 2px 7px;
-      margin-left: 8px; vertical-align: middle;
-    }
+    .s-name { font-size: 15px; font-weight: bold; margin-bottom: 3px; }
+    .s-sub  { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .s-btns { display: flex; gap: 8px; }
+    .s-btns button { flex: 1; }
 
-    /* ── EDITOR SCHEDA ── */
+    /* ─── EDITOR SCHEDA ─── */
     #scheda-editor { display: none; }
-    .blocco-editor {
-      border: 1px solid #ccc; margin-bottom: 12px; background: #fff;
-    }
+    .vgap { display: flex; flex-direction: column; gap: 10px; }
+
+    .blocco-editor { border: 1px solid #ccc; margin-bottom: 12px; background: #fff; }
     .blocco-header {
-      background: #1c1c1c; color: #fff; padding: 10px 12px;
-      display: flex; align-items: center; justify-content: space-between;
+      background: #1c1c1c; color: #fff; padding: 12px;
+      display: flex; align-items: center;
     }
-    .blocco-header .b-title { font-size: 14px; font-weight: bold; }
-    .blocco-header .b-giri  { font-size: 12px; color: #aaa; margin-left: 8px; }
-    .blocco-header .b-del   { background: none; border: none; color: #d0021b; cursor: pointer; font-size: 16px; padding: 0 4px; }
-    .blocco-body { padding: 10px 12px; }
-
-    /* lista esercizi nel blocco editor */
-    .blocco-ex-list { list-style: none; margin-bottom: 10px; }
-    .blocco-ex-item {
-      display: flex; align-items: center; gap: 8px; padding: 7px 0;
-      border-bottom: 1px solid #f0f0f0; font-size: 14px;
+    .blocco-header .bh-name { font-size: 14px; font-weight: bold; flex: 1; }
+    .blocco-header .bh-giri { font-size: 12px; color: #aaa; margin-right: 10px; }
+    .blocco-header .bh-del  {
+      background: none; border: none; color: #d0021b; font-size: 22px;
+      padding: 0 4px; cursor: pointer; min-width: 36px; min-height: 36px;
+      display: flex; align-items: center; justify-content: center;
     }
-    .blocco-ex-item:last-child { border-bottom: none; }
-    .blocco-ex-item .bei-icon { width: 28px; height: 28px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
-    .blocco-ex-item .bei-ph   { width: 28px; height: 28px; background: #eee; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-    .blocco-ex-item .bei-name { flex: 1; }
-    .blocco-ex-item .bei-tag  { font-size: 11px; color: #888; border: 1px solid #ddd; padding: 2px 6px; }
-    .blocco-ex-item .bei-del  { background: none; border: none; color: #d0021b; cursor: pointer; font-size: 16px; padding: 0 4px; }
-    /* drag handle */
-    .bei-drag { cursor: grab; color: #ccc; font-size: 18px; padding: 0 4px; touch-action: none; }
+    .blocco-body { padding: 12px; }
 
-    .add-ex-to-blocco { display: flex; gap: 8px; margin-top: 6px; }
-    .add-ex-to-blocco select { flex: 1; }
+    .bei-list { list-style: none; margin-bottom: 10px; }
+    .bei-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px;
+    }
+    .bei-item:last-child { border-bottom: none; }
+    .bei-icon { width: 30px; height: 30px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
+    .bei-ph   { width: 30px; height: 30px; background: #eee; border: 1px solid #ddd;
+                display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .bei-name { flex: 1; }
+    .bei-tag  { font-size: 11px; color: #888; border: 1px solid #ddd; padding: 3px 7px; white-space: nowrap; }
+    .bei-del  {
+      background: none; border: none; color: #d0021b; font-size: 20px;
+      padding: 0 4px; cursor: pointer; min-width: 36px; min-height: 36px;
+      display: flex; align-items: center; justify-content: center;
+    }
 
-    /* ── ALLENAMENTO GUIDATO ── */
-    #allenamento-start { }
+    /* riga aggiungi esercizio al blocco */
+    .add-ex-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .add-ex-row-inline { display: flex; gap: 8px; align-items: stretch; }
+    .sel-tipo {
+      border: 1px solid #ccc; font-size: 15px; font-family: Arial, sans-serif;
+      background: #fff; padding: 12px 10px; -webkit-appearance: none;
+      outline: none; flex: 1;
+    }
+    .inp-durata {
+      border: 1px solid #ccc; font-size: 15px; font-family: Arial, sans-serif;
+      background: #fff; padding: 12px 10px; width: 90px;
+      outline: none; -webkit-appearance: none; display: none;
+    }
+
+    /* ─── ALLENAMENTO ─── */
     #allenamento-session { display: none; }
 
-    .sessione-header {
-      background: #1c1c1c; color: #fff; padding: 12px 16px; margin: -16px -16px 16px;
-      display: flex; align-items: center; gap: 10px;
+    .sess-header {
+      background: #1c1c1c; color: #fff; padding: 12px 14px;
+      margin: -14px -14px 14px;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .sessione-header .sh-blocco { font-size: 13px; color: #aaa; }
-    .sessione-header .sh-giro   { font-size: 13px; color: #d0021b; font-weight: bold; }
-    .sessione-header .sh-prog   { margin-left: auto; font-size: 12px; color: #888; }
+    .sess-header .sh-left h4 { font-size: 14px; font-weight: bold; color: #d0021b; }
+    .sess-header .sh-left p  { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .sess-header .sh-prog    { font-size: 12px; color: #888; }
 
-    /* card esercizio corrente */
-    .current-ex-card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
-    .current-ex-top  { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .current-ex-top img, .current-ex-top .cet-ph {
-      width: 56px; height: 56px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0;
-    }
-    .current-ex-top .cet-ph {
-      background: #f2f2f2; display: flex; align-items: center; justify-content: center; font-size: 24px;
-    }
-    .current-ex-top .cet-info h3 { font-size: 18px; color: #1c1c1c; }
-    .current-ex-top .cet-info .cet-hint {
-      font-size: 12px; color: #888; margin-top: 4px; line-height: 1.4;
-    }
-    .current-ex-top .cet-info .hint-up   { color: #d0021b; font-weight: bold; }
-    .current-ex-top .cet-info .hint-more { color: #1a7f37; font-weight: bold; }
+    .progress-bar-wrap { background: #333; height: 4px; margin: -14px -14px 14px; }
+    .progress-bar-fill { background: #d0021b; height: 4px; transition: width .4s; }
 
-    .session-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-    .session-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; text-transform: uppercase; }
-    .session-inputs input {
-      width: 100%; border: 1px solid #ccc; padding: 14px 10px;
-      font-size: 22px; font-weight: bold; text-align: center; outline: none; font-family: Arial, sans-serif;
-    }
-    .session-inputs input:focus { border-color: #d0021b; border-width: 2px; }
+    .ex-card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
+    .ex-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .ex-card-top .ect-icon { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
+    .ex-card-top .ect-ph   { width: 60px; height: 60px; background: #f2f2f2; border: 1px solid #ddd;
+                              display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+    .ex-card-top h3 { font-size: 19px; color: #1c1c1c; }
+    .ex-hint { font-size: 12px; margin-top: 4px; line-height: 1.5; }
+    .hint-up   { color: #d0021b; font-weight: bold; }
+    .hint-more { color: #1a7f37; font-weight: bold; }
 
-    .quick-reps { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sess-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .sess-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; }
+    .sess-inputs input {
+      width: 100%; border: 1px solid #ccc; padding: 16px 10px;
+      font-size: 24px; font-weight: bold; text-align: center;
+      font-family: Arial, sans-serif; outline: none; -webkit-appearance: none;
+    }
+    .sess-inputs input:focus { border-color: #d0021b; border-width: 2px; }
+
+    .quick-reps { display: flex; gap: 6px; margin-bottom: 12px; }
     .quick-reps button {
-      flex: 1; min-width: 44px; background: #fff; border: 1px solid #ccc;
-      padding: 9px 0; font-size: 14px; cursor: pointer; font-family: Arial, sans-serif;
+      flex: 1; min-height: 48px; background: #fff; border: 1px solid #ccc;
+      font-size: 15px; font-family: Arial, sans-serif; cursor: pointer;
     }
     .quick-reps button:active { background: #1c1c1c; color: #fff; }
 
-    /* navigazione esercizi nella sessione */
-    .session-nav { display: flex; gap: 8px; margin-top: 10px; }
-    .session-nav button { flex: 1; }
+    .sess-nav { display: flex; gap: 8px; }
+    .sess-nav button { flex: 1; }
+
+    /* timer */
+    .timer-wrap { text-align: center; padding: 8px 0 14px; }
+    .timer-ring { width: 150px; height: 150px; margin: 0 auto 14px; }
+    .timer-ring svg { transform: rotate(-90deg); }
+    .tr-bg   { fill: none; stroke: #eee; stroke-width: 9; }
+    .tr-fill { fill: none; stroke: #d0021b; stroke-width: 9; stroke-linecap: butt;
+               transition: stroke-dashoffset 1s linear; }
+    .tr-text { font-size: 28px; font-weight: bold; fill: #1c1c1c;
+               text-anchor: middle; dominant-baseline: central;
+               font-family: Arial, sans-serif; transform: rotate(90deg); transform-origin: center; }
+    .timer-btns { display: flex; gap: 8px; }
 
     /* riepilogo giro */
-    .giro-summary { background: #f9f9f9; border: 1px solid #eee; padding: 12px; margin-bottom: 14px; }
-    .giro-summary h4 { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
-    .giro-summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #eee; }
-    .giro-summary-row:last-child { border-bottom: none; }
+    .giro-recap { background: #f9f9f9; border: 1px solid #eee; padding: 12px; margin-bottom: 14px; }
+    .giro-recap h4 { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+    .recap-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #eee; }
+    .recap-row:last-child { border-bottom: none; }
 
-    /* riepilogo fine sessione */
-    .session-end { text-align: center; padding: 16px 0; }
-    .session-end .end-icon { font-size: 48px; margin-bottom: 12px; }
-    .session-end h3 { font-size: 20px; color: #1c1c1c; margin-bottom: 8px; }
-    .session-end p  { font-size: 14px; color: #888; margin-bottom: 20px; }
+    /* fine sessione */
+    .sess-end { text-align: center; padding: 24px 0; }
+    .sess-end .end-ico { font-size: 52px; margin-bottom: 14px; }
+    .sess-end h3 { font-size: 21px; margin-bottom: 8px; }
+    .sess-end p  { font-size: 14px; color: #888; margin-bottom: 24px; }
 
-    /* progress bar */
-    .progress-bar-wrap { background: #333; height: 3px; margin: 0 -16px; }
-    .progress-bar-fill { background: #d0021b; height: 3px; transition: width .3s; }
-
-    /* ── STORICO ── */
-    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .history-table thead tr { background: #1c1c1c; color: #fff; }
-    .history-table th { text-align: left; padding: 10px; font-weight: normal; }
-    .history-table td { padding: 9px 10px; border-bottom: 1px solid #eee; }
-    .history-table tr:nth-child(even) td { background: #f9f9f9; }
-    .history-table .del-row {
+    /* ─── STORICO ─── */
+    .h-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .h-table thead tr { background: #1c1c1c; color: #fff; }
+    .h-table th { text-align: left; padding: 10px; font-weight: normal; }
+    .h-table td { padding: 9px 10px; border-bottom: 1px solid #eee; }
+    .h-table tr:nth-child(even) td { background: #f9f9f9; }
+    .h-table .del-row {
       background: none; border: 1px solid #d0021b; color: #d0021b;
-      cursor: pointer; padding: 3px 8px; font-size: 12px; min-height: 30px;
+      cursor: pointer; padding: 4px 10px; font-size: 12px; min-height: 34px;
     }
-    .history-table .del-row:active { background: #d0021b; color: #fff; }
+    .h-table .del-row:active { background: #d0021b; color: #fff; }
 
-    /* ── MODAL ── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
-      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    /* ─── MODAL ─── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      z-index: 300; align-items: flex-end; justify-content: center;
+      padding-bottom: env(safe-area-inset-bottom);
     }
-    .modal-overlay.open { display: flex; }
-    .modal { background: #fff; width: 100%; max-width: 380px; padding: 20px; max-height: 90vh; overflow-y: auto; }
-    .modal h3 { font-size: 15px; font-weight: bold; margin-bottom: 14px; }
-    .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
-    .modal-actions button { flex: 1; padding: 12px; font-size: 14px; cursor: pointer; font-family: Arial, sans-serif; border: none; }
-    .modal-btn-cancel { background: #eee; color: #333; }
-    .modal-btn-save   { background: #d0021b; color: #fff; font-weight: bold; }
+    .modal-bg.open { display: flex; }
+    .modal-box {
+      background: #fff; width: 100%; max-width: 480px;
+      padding: 20px; max-height: 85vh; overflow-y: auto;
+      border-radius: 0;
+    }
+    .modal-box h3 { font-size: 16px; font-weight: bold; margin-bottom: 14px; }
+    .modal-row { display: flex; gap: 8px; margin-top: 14px; }
+    .modal-row button { flex: 1; min-height: 52px; }
 
-    /* ── LOADING ── */
-    #loading-screen {
-      position: fixed; inset: 0; background: #1c1c1c; display: flex;
-      flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 999;
+    /* ─── LOADING ─── */
+    #loading {
+      position: fixed; inset: 0; background: #1c1c1c; z-index: 999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
     }
-    #loading-screen .logo-big {
-      background: #d0021b; color: #fff; font-size: 36px; font-weight: bold;
-      width: 72px; height: 72px; display: flex; align-items: center; justify-content: center;
+    #loading .logo-big {
+      background: #d0021b; color: #fff; font-size: 38px; font-weight: bold;
+      width: 76px; height: 76px; display: flex; align-items: center; justify-content: center;
     }
-    #loading-screen p { color: #888; font-size: 14px; }
-    #loading-screen.hidden { display: none; }
+    #loading p { color: #888; font-size: 14px; }
+    #loading.hidden { display: none; }
 
-    /* ── SCROLLBAR ── */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: #ccc; }
-    ::-webkit-scrollbar-thumb:hover { background: #d0021b; }
   </style>
 </head>
 <body>
 
-<div id="loading-screen">
+<div id="loading">
   <div class="logo-big">G</div>
   <p>Connessione in corso…</p>
 </div>
@@ -281,245 +308,219 @@
 <header>
   <div class="logo">G</div>
   <h1>GYM TRACKER</h1>
-  <span id="sync-indicator">●</span>
+  <span id="sync">●</span>
 </header>
 
-<!-- progress bar sessione (visibile solo durante allenamento) -->
-<div class="progress-bar-wrap" id="progress-wrap" style="display:none">
-  <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
-</div>
+<nav class="tabs">
+  <button class="active" data-tab="tab-ex">Esercizi</button>
+  <button data-tab="tab-schede">Schede</button>
+  <button data-tab="tab-al">Allenamento</button>
+  <button data-tab="tab-storia">Storico</button>
+</nav>
 
-<div class="tabs">
-  <button class="active" onclick="switchTab('tab-exercises',this)">Esercizi</button>
-  <button onclick="switchTab('tab-schede',this)">Schede</button>
-  <button onclick="switchTab('tab-allenamento',this)">Allenamento</button>
-  <button onclick="switchTab('tab-history',this)">Storico</button>
-</div>
-
-<!-- ══════════════════════════════════════════════════
-     TAB 1 — ESERCIZI
-════════════════════════════════════════════════════ -->
-<div class="page active" id="tab-exercises">
+<!-- ══ TAB ESERCIZI ══ -->
+<div class="page active" id="tab-ex">
   <div class="card">
     <h2>Nuovo esercizio</h2>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <input class="inp" type="text" id="new-ex-name" placeholder="Es. Panca piana…" maxlength="60"
+    <div class="vgap">
+      <input class="inp" type="text" id="inp-ex-name" placeholder="Es. Panca piana…" maxlength="60"
              autocomplete="off" autocorrect="off" spellcheck="false" />
-      <label class="img-upload-area" for="file-input">
-        <img class="img-preview" id="add-preview" src="" alt="" />
-        <span id="add-upload-lbl">📷 Aggiungi immagine (opzionale)</span>
+      <label class="img-upload-area" for="file-img">
+        <img class="img-preview" id="img-prev" src="" alt="" />
+        <span id="img-lbl">📷 Aggiungi immagine (opzionale)</span>
       </label>
-      <input type="file" id="file-input" accept="image/*" style="display:none" />
+      <input type="file" id="file-img" accept="image/*" style="display:none" />
       <button class="btn btn-red btn-full" id="btn-add-ex">+ Aggiungi esercizio</button>
     </div>
   </div>
   <div class="card">
     <h2>I tuoi esercizi</h2>
-    <ul id="exercise-list"></ul>
-    <div class="empty-msg" id="no-exercises">Nessun esercizio ancora.</div>
+    <ul id="ex-list"></ul>
+    <p class="empty-msg" id="no-ex">Nessun esercizio ancora.</p>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     TAB 2 — SCHEDE
-════════════════════════════════════════════════════ -->
+<!-- ══ TAB SCHEDE ══ -->
 <div class="page" id="tab-schede">
 
-  <!-- lista schede -->
-  <div id="schede-list-view">
+  <div id="view-schede">
     <div class="card">
       <h2>Le tue schede</h2>
       <div id="schede-list"></div>
-      <div class="empty-msg" id="no-schede">Nessuna scheda. Creane una!</div>
+      <p class="empty-msg" id="no-schede">Nessuna scheda. Creane una!</p>
     </div>
     <button class="btn btn-red btn-full" id="btn-nuova-scheda">+ Nuova scheda</button>
   </div>
 
-  <!-- editor scheda -->
   <div id="scheda-editor">
     <div class="card">
       <h2 id="editor-title">Nuova scheda</h2>
-      <input class="inp" type="text" id="scheda-name-inp" placeholder="Nome scheda…" maxlength="60"
-             autocomplete="off" style="margin-bottom:10px" />
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-full" type="button" id="btn-annulla-editor">Annulla</button>
-        <button class="btn btn-red btn-full"   type="button" id="btn-salva-scheda">Salva scheda</button>
+      <div class="vgap">
+        <input class="inp" type="text" id="inp-scheda-name" placeholder="Nome scheda…" maxlength="60"
+               autocomplete="off" autocorrect="off" />
+        <button class="btn btn-ghost btn-full" id="btn-annulla">← Annulla</button>
       </div>
     </div>
 
-    <!-- blocchi -->
-    <div id="blocchi-container"></div>
+    <div id="blocchi-cont"></div>
 
-    <button class="btn btn-dark btn-full" id="btn-add-blocco" style="margin-bottom:14px">+ Aggiungi blocco</button>
+    <div class="vgap" style="margin-bottom:14px">
+      <button class="btn btn-dark btn-full" id="btn-add-blocco">+ Aggiungi blocco</button>
+      <button class="btn btn-red btn-full"  id="btn-salva" style="min-height:58px;font-size:16px">✓ Salva scheda</button>
+    </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     TAB 3 — ALLENAMENTO
-════════════════════════════════════════════════════ -->
-<div class="page" id="tab-allenamento">
+<!-- ══ TAB ALLENAMENTO ══ -->
+<div class="page" id="tab-al">
 
-  <!-- schermata selezione scheda -->
-  <div id="allenamento-start">
+  <div id="al-start">
     <div class="card">
       <h2>Scegli scheda</h2>
-      <select class="inp" id="al-scheda-select" style="margin-bottom:12px">
-        <option value="">— seleziona —</option>
-      </select>
-      <button class="btn btn-red btn-full" id="btn-inizia-al">▶ Inizia allenamento</button>
+      <div class="vgap">
+        <select class="inp" id="al-sel-scheda"></select>
+        <button class="btn btn-red btn-full" id="btn-inizia">▶ Inizia allenamento</button>
+      </div>
     </div>
-    <div class="empty-msg" id="no-schede-al" style="display:none">Crea prima una scheda nel tab Schede.</div>
+    <p class="empty-msg" id="no-schede-al" style="display:none">Crea prima una scheda.</p>
   </div>
 
-  <!-- sessione guidata -->
-  <div id="allenamento-session">
-    <!-- header sessione (blocco + giro) -->
-    <div class="sessione-header">
-      <div>
-        <div class="sh-blocco" id="sh-blocco"></div>
-        <div class="sh-giro"   id="sh-giro"></div>
+  <div id="al-session">
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-fill" style="width:0"></div></div>
+
+    <div class="sess-header">
+      <div class="sh-left">
+        <h4 id="sh-giro"></h4>
+        <p  id="sh-blocco"></p>
       </div>
-      <div class="sh-prog" id="sh-prog"></div>
+      <span id="sh-prog"></span>
     </div>
 
-    <!-- card esercizio corrente -->
-    <div class="current-ex-card" id="current-ex-card">
-      <div class="current-ex-top">
-        <div id="cet-icon"></div>
-        <div class="cet-info">
-          <h3 id="cet-name"></h3>
-          <div class="cet-hint" id="cet-hint"></div>
+    <div class="ex-card" id="ex-card">
+      <div class="ex-card-top">
+        <div id="ect-icon"></div>
+        <div>
+          <h3 id="ect-name"></h3>
+          <div class="ex-hint" id="ect-hint"></div>
         </div>
       </div>
 
-      <!-- form con sovraccarico -->
-      <div id="cet-form-peso">
-        <div class="session-inputs">
+      <!-- peso -->
+      <div id="form-peso">
+        <div class="sess-inputs">
           <div>
             <label>Ripetizioni *</label>
             <input type="number" id="al-reps" min="1" max="999" inputmode="numeric" placeholder="0" />
           </div>
           <div>
             <label>Peso kg</label>
-            <input type="number" id="al-weight" min="0" max="9999" step="0.5" inputmode="decimal" placeholder="—" />
+            <input type="number" id="al-kg" min="0" max="9999" step="0.5" inputmode="decimal" placeholder="—" />
           </div>
         </div>
-        <div class="quick-reps">
-          <button onclick="alSetReps(6)">6</button>
-          <button onclick="alSetReps(8)">8</button>
-          <button onclick="alSetReps(10)">10</button>
-          <button onclick="alSetReps(12)">12</button>
-          <button onclick="alSetReps(15)">15</button>
-        </div>
+        <div class="quick-reps" id="qr-btns"></div>
       </div>
 
-      <!-- form senza sovraccarico -->
-      <div id="cet-form-fatto" style="display:none">
-        <p style="font-size:13px;color:#888;margin-bottom:12px">Nessun peso da registrare.</p>
+      <!-- solo -->
+      <div id="form-solo" style="display:none">
+        <p style="font-size:13px;color:#888;padding-bottom:10px">Nessun peso — premi Avanti quando hai finito.</p>
       </div>
 
       <!-- timer -->
-      <div id="cet-form-timer" style="display:none">
-        <div class="timer-ring">
-          <svg width="140" height="140" viewBox="0 0 140 140">
-            <circle class="tr-bg"   cx="70" cy="70" r="58"/>
-            <circle class="tr-fill" id="timer-circle" cx="70" cy="70" r="58"
-              stroke-dasharray="364.4" stroke-dashoffset="0"/>
-            <text class="tr-text" id="timer-text" x="70" y="70">0:00</text>
-          </svg>
-        </div>
-        <div class="timer-btns">
-          <button class="btn btn-dark btn-full" id="btn-timer-start">▶ Avvia timer</button>
-          <button class="btn btn-ghost"         id="btn-timer-reset" style="padding:12px 14px">↺</button>
+      <div id="form-timer" style="display:none">
+        <div class="timer-wrap">
+          <div class="timer-ring">
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              <circle class="tr-bg"   cx="75" cy="75" r="62"/>
+              <circle class="tr-fill" id="t-circle" cx="75" cy="75" r="62"
+                stroke-dasharray="389.6" stroke-dashoffset="0"/>
+              <text class="tr-text" id="t-text" x="75" y="75">0:00</text>
+            </svg>
+          </div>
+          <div class="timer-btns">
+            <button class="btn btn-dark btn-full" id="btn-t-start" style="flex:2">▶ Avvia</button>
+            <button class="btn btn-ghost" id="btn-t-reset" style="min-height:52px;padding:0 16px">↺</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- navigazione -->
-    <div class="session-nav">
-      <button class="btn btn-ghost"  id="btn-al-skip">Salta</button>
-      <button class="btn btn-red"    id="btn-al-next" style="flex:2">Avanti →</button>
+    <div class="sess-nav">
+      <button class="btn btn-ghost" id="btn-skip">Salta</button>
+      <button class="btn btn-red"   id="btn-next" style="flex:2">Avanti →</button>
     </div>
 
-    <!-- riepilogo fine giro (nascosto di default) -->
-    <div id="giro-summary-wrap" style="display:none;margin-top:14px">
-      <div class="giro-summary">
-        <h4 id="gs-title">Riepilogo giro</h4>
-        <div id="gs-rows"></div>
+    <div id="giro-wrap" style="display:none;margin-top:14px">
+      <div class="giro-recap">
+        <h4 id="gr-title"></h4>
+        <div id="gr-rows"></div>
       </div>
-      <button class="btn btn-red btn-full" id="btn-prossimo-giro">Prossimo giro →</button>
+      <button class="btn btn-red btn-full" id="btn-next-giro">Prossimo giro →</button>
     </div>
 
-    <!-- fine sessione -->
-    <div id="session-end-wrap" style="display:none;margin-top:14px">
-      <div class="card session-end">
-        <div class="end-icon">🏁</div>
+    <div id="end-wrap" style="display:none;margin-top:14px">
+      <div class="card sess-end">
+        <div class="end-ico">🏁</div>
         <h3>Allenamento completato!</h3>
-        <p id="session-end-msg"></p>
-        <button class="btn btn-red btn-full" id="btn-fine-sessione">Torna alle schede</button>
+        <p id="end-msg"></p>
+        <button class="btn btn-red btn-full" id="btn-fine">Torna alle schede</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     TAB 4 — STORICO
-════════════════════════════════════════════════════ -->
-<div class="page" id="tab-history">
+<!-- ══ TAB STORICO ══ -->
+<div class="page" id="tab-storia">
   <div class="card">
-    <h2>Filtra per esercizio</h2>
-    <select class="inp" id="history-select">
-      <option value="">— tutti —</option>
-    </select>
+    <h2>Filtra</h2>
+    <select class="inp" id="storia-sel"></select>
   </div>
   <div class="card">
     <h2>Log</h2>
-    <div id="history-content"><div class="empty-msg">Seleziona o lascia "tutti" per vedere tutto.</div></div>
+    <div id="storia-cont"><p class="empty-msg">Nessun log ancora.</p></div>
   </div>
 </div>
 
 <!-- ══ MODAL ICONA ══ -->
-<div class="modal-overlay" id="modal-icon">
-  <div class="modal">
-    <h3 id="modal-icon-title">Modifica icona</h3>
-    <div id="modal-icon-preview"></div>
-    <label class="img-upload-area" for="modal-file-input" style="margin:12px 0">
-      📷 Scegli nuova immagine
-    </label>
-    <input type="file" id="modal-file-input" accept="image/*" style="display:none" />
-    <button class="btn btn-ghost-red btn-full" id="modal-icon-remove" style="margin-bottom:10px">Rimuovi immagine</button>
-    <div class="modal-actions">
-      <button class="modal-btn-cancel" id="modal-icon-cancel">Annulla</button>
-      <button class="modal-btn-save"   id="modal-icon-save">Salva</button>
+<div class="modal-bg" id="modal-icon">
+  <div class="modal-box">
+    <h3 id="mi-title">Modifica icona</h3>
+    <div id="mi-preview"></div>
+    <label class="img-upload-area" for="file-icon" style="margin:12px 0">📷 Scegli nuova immagine</label>
+    <input type="file" id="file-icon" accept="image/*" style="display:none" />
+    <button class="btn btn-ghost-red btn-full" id="mi-remove" style="margin-bottom:8px">Rimuovi immagine</button>
+    <div class="modal-row">
+      <button class="btn btn-ghost" id="mi-cancel">Annulla</button>
+      <button class="btn btn-red"   id="mi-save">Salva</button>
     </div>
   </div>
 </div>
 
 <!-- ══ MODAL NUOVO BLOCCO ══ -->
-<div class="modal-overlay" id="modal-blocco">
-  <div class="modal">
+<div class="modal-bg" id="modal-blocco">
+  <div class="modal-box">
     <h3>Nuovo blocco</h3>
-    <input class="inp" type="text" id="mb-name" placeholder="Nome blocco (es. Circuito A)" maxlength="60"
-           style="margin-bottom:10px" autocomplete="off" />
-    <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Numero di giri</label>
-    <input class="inp" type="number" id="mb-giri" min="1" max="20" value="3" style="margin-bottom:0" />
-    <div class="modal-actions">
-      <button class="modal-btn-cancel" id="mb-cancel">Annulla</button>
-      <button class="modal-btn-save"   id="mb-save">Aggiungi</button>
+    <div class="vgap">
+      <input class="inp" type="text" id="mb-name" placeholder="Nome (es. Circuito A)" maxlength="60" autocomplete="off" />
+      <div>
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Numero di giri</label>
+        <input class="inp" type="number" id="mb-giri" min="1" max="20" value="3" inputmode="numeric" />
+      </div>
+    </div>
+    <div class="modal-row">
+      <button class="btn btn-ghost" id="mb-cancel">Annulla</button>
+      <button class="btn btn-red"   id="mb-save">Aggiungi blocco</button>
     </div>
   </div>
 </div>
 
-<!-- Firebase SDK -->
 <script type="module">
-import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot,
-         addDoc, updateDoc, deleteDoc, query,
-         orderBy, serverTimestamp, writeBatch }
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc,
+         deleteDoc, query, orderBy, serverTimestamp, writeBatch }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* ── Firebase init ── */
-const fbApp = initializeApp({
+/* ─── Firebase ─── */
+const app = initializeApp({
   apiKey:            "AIzaSyB60V4Jp6Rk9I8B1tb9033iP3iSrv2oAxY",
   authDomain:        "gym-tracker-a5f1d.firebaseapp.com",
   projectId:         "gym-tracker-a5f1d",
@@ -527,812 +528,680 @@ const fbApp = initializeApp({
   messagingSenderId: "712965008242",
   appId:             "1:712965008242:web:d9a347472821d80626cbeb"
 });
-const db = getFirestore(fbApp);
+const db       = getFirestore(app);
+const colEx    = collection(db,'exercises');
+const colLogs  = collection(db,'logs');
+const colSch   = collection(db,'schede');
 
-const colEx      = collection(db, 'exercises');
-const colLogs    = collection(db, 'logs');
-const colSchede  = collection(db, 'schede');
+/* ─── Cache ─── */
+let exercises=[], logs=[], schede=[];
 
-/* ── cache locale ── */
-let exercises = [];
-let logs      = [];
-let schede    = [];   // [{id, name, blocchi:[{id,name,giri,esercizi:[{exId,sovraccarico}]}]}]
-
-/* ── DOM refs ── */
+/* ─── Helpers DOM ─── */
 const $  = id => document.getElementById(id);
-const loadingScreen  = $('loading-screen');
-const syncInd        = $('sync-indicator');
-const progressWrap   = $('progress-wrap');
-const progressFill   = $('progress-fill');
+const el = tag => document.createElement(tag);
 
-let initLoaded = { ex: false, logs: false, schede: false };
+/* ─── Sync indicator ─── */
+const sync = $('sync');
+const syncOk   = () => { sync.textContent='●'; sync.className='ok'; };
+const syncErr  = () => { sync.textContent='●'; sync.className='error'; };
+const syncWait = () => { sync.textContent='●'; sync.className=''; };
 
-/* ── sync helpers ── */
-function syncOk()    { syncInd.textContent='●'; syncInd.className='ok'; }
-function syncErr()   { syncInd.textContent='●'; syncInd.className='error'; }
-function syncWait()  { syncInd.textContent='●'; syncInd.className=''; }
+/* ─── Loading ─── */
+let ready = {ex:false,logs:false,sch:false};
 function checkReady() {
-  if (initLoaded.ex && initLoaded.logs && initLoaded.schede) {
-    loadingScreen.classList.add('hidden');
-    syncOk();
-  }
+  if (ready.ex && ready.logs && ready.sch) { $('loading').classList.add('hidden'); syncOk(); }
 }
 
-/* ── uid locale ── */
-function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+/* ─── uid ─── */
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
-/* ── date helpers ── */
+/* ─── Timestamp ─── */
 function tsMs(ts) {
   if (!ts) return 0;
-  if (typeof ts.toMillis === 'function') return ts.toMillis();
-  if (typeof ts === 'number') return ts;
+  if (typeof ts.toMillis==='function') return ts.toMillis();
+  if (typeof ts==='number') return ts;
   return 0;
 }
-/* ── formatta secondi in mm:ss ── */
-function fmtSec(s) {
-  const m = Math.floor(s/60);
-  const r = s%60;
-  return m>0 ? `${m}′${r>0?r+'″':''}` : `${s}″`;
-}
-function fmtSecTimer(s) {
-  const m = Math.floor(s/60);
-  const r = String(s%60).padStart(2,'0');
-  return `${m}:${r}`;
-}
+function fmtDate(ts) { return new Date(tsMs(ts)||Date.now()).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+function fmtTime(ts) { return new Date(tsMs(ts)||Date.now()).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); }
+function fmtSec(s)   { const m=Math.floor(s/60),r=s%60; return m>0?`${m}′${r?r+'″':''}`:`${s}″`; }
+function fmtTimer(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
 
-function fmtDate(ts) {
-  return new Date(tsMs(ts)||Date.now()).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'});
-}
-function fmtTime(ts) {
-  return new Date(tsMs(ts)||Date.now()).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-}
-
-/* ── ridimensiona immagine ── */
-function resizeImg(file, size, cb) {
-  const r = new FileReader();
-  r.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = c.height = size;
-      const ctx = c.getContext('2d');
-      const ratio = Math.max(size/img.width, size/img.height);
-      const w = img.width*ratio, h = img.height*ratio;
-      ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+/* ─── Ridimensiona immagine ─── */
+function resizeImg(file, cb) {
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=el('canvas'); c.width=c.height=80;
+      const ctx=c.getContext('2d');
+      const ratio=Math.max(80/img.width,80/img.height);
+      const w=img.width*ratio, h=img.height*ratio;
+      ctx.drawImage(img,(80-w)/2,(80-h)/2,w,h);
       cb(c.toDataURL('image/jpeg',0.85));
     };
-    img.src = e.target.result;
+    img.src=e.target.result;
   };
   r.readAsDataURL(file);
 }
 
-/* ── cambio tab ── */
-window.switchTab = (tabId, btn) => {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
-  $(tabId).classList.add('active');
-  btn.classList.add('active');
-  if (tabId==='tab-schede')     renderSchedeList();
-  if (tabId==='tab-allenamento') renderAlStart();
-  if (tabId==='tab-history')    renderHistorySelect();
-};
-
-/* ════════════════════════════════════════
-   FIRESTORE LISTENERS
-════════════════════════════════════════ */
-onSnapshot(query(colEx, orderBy('createdAt')), snap => {
-  exercises = snap.docs.map(d=>({id:d.id,...d.data()}));
-  initLoaded.ex = true; checkReady();
-  renderExercises();
-  renderSchedeList();
-  renderAlStart();
-  renderHistorySelect();
-  syncOk();
-}, syncErr);
-
-onSnapshot(query(colLogs, orderBy('clientTs')), snap => {
-  logs = snap.docs.map(d=>({id:d.id,...d.data()}));
-  initLoaded.logs = true; checkReady();
-  const v = $('history-select').value;
-  if (v !== undefined) renderHistory(v);
-  syncOk();
-}, syncErr);
-
-onSnapshot(query(colSchede, orderBy('createdAt')), snap => {
-  schede = snap.docs.map(d=>({id:d.id,...d.data()}));
-  initLoaded.schede = true; checkReady();
-  renderSchedeList();
-  renderAlStart();
-  syncOk();
-}, syncErr);
-
-/* ════════════════════════════════════════
-   TAB ESERCIZI
-════════════════════════════════════════ */
-let pendingImg = null;
-
-function makeExIcon(ex, size) {
-  if (ex.image) {
-    const img = document.createElement('img');
-    img.src=ex.image; img.alt=ex.name;
-    img.className='ex-icon'; img.style.width=img.style.height=size+'px';
-    return img;
+/* ─── Icona generica ─── */
+function makeIcon(ex, size) {
+  if (ex?.image) {
+    const i=el('img'); i.src=ex.image; i.alt=ex.name||'';
+    i.style.cssText=`width:${size}px;height:${size}px;object-fit:cover;border:1px solid #ddd;flex-shrink:0`;
+    return i;
   }
-  const d = document.createElement('div');
-  d.className='ex-icon-ph'; d.style.width=d.style.height=size+'px'; d.textContent='🏋️';
-  return d;
+  const d=el('div');
+  d.style.cssText=`width:${size}px;height:${size}px;background:#eee;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*.45)}px;flex-shrink:0`;
+  d.textContent='🏋️'; return d;
 }
 
-function renderExercises() {
-  const ul = $('exercise-list');
-  ul.innerHTML='';
-  $('no-exercises').style.display = exercises.length===0?'block':'none';
-  exercises.forEach(ex=>{
-    const li = document.createElement('li');
-    li.appendChild(makeExIcon(ex,44));
-    const nm = document.createElement('span'); nm.className='ex-name'; nm.textContent=ex.name;
-    const ac = document.createElement('div');  ac.className='ex-actions';
-    const eb = document.createElement('button'); eb.className='btn-edit'; eb.textContent='🖼';
-    const db2= document.createElement('button'); db2.className='btn-del'; db2.textContent='Elimina';
-    eb.onclick = e => { e.stopPropagation(); openIconModal(ex.id); };
-    db2.onclick = async e => {
-      e.stopPropagation();
-      if (!confirm(`Eliminare "${ex.name}" e tutto il suo storico?`)) return;
-      syncWait();
-      const batch = writeBatch(db);
-      logs.filter(l=>l.exerciseId===ex.id).forEach(l=>batch.delete(doc(db,'logs',l.id)));
-      batch.delete(doc(db,'exercises',ex.id));
-      await batch.commit();
-    };
-    ac.append(eb,db2); li.append(nm,ac);
-    ul.appendChild(li);
-  });
-}
-
-// upload immagine nuovo esercizio
-$('file-input').addEventListener('change', function() {
-  if (!this.files[0]) return;
-  resizeImg(this.files[0],80,b64=>{
-    pendingImg=b64;
-    const prev=$('add-preview'); prev.src=b64; prev.classList.add('visible');
-    $('add-upload-lbl').textContent='✓ Immagine pronta';
+/* ════════════════════ TABS ════════════════════ */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const pg=$(btn.dataset.tab);
+    if (pg) pg.classList.add('active');
+    const t=btn.dataset.tab;
+    if (t==='tab-schede')  renderSchedeList();
+    if (t==='tab-al')      renderAlStart();
+    if (t==='tab-storia')  renderStoriaSelect();
   });
 });
 
-async function addExercise() {
-  const name = $('new-ex-name').value.trim();
+/* ════════════════════ FIRESTORE ════════════════════ */
+onSnapshot(query(colEx,  orderBy('createdAt')), s=>{
+  exercises=s.docs.map(d=>({id:d.id,...d.data()}));
+  ready.ex=true; checkReady(); syncOk();
+  renderExercises(); renderSchedeList(); renderAlStart(); renderStoriaSelect();
+}, syncErr);
+
+onSnapshot(query(colLogs,orderBy('clientTs')), s=>{
+  logs=s.docs.map(d=>({id:d.id,...d.data()}));
+  ready.logs=true; checkReady(); syncOk();
+  renderStoria($('storia-sel').value||'');
+}, syncErr);
+
+onSnapshot(query(colSch, orderBy('createdAt')), s=>{
+  schede=s.docs.map(d=>({id:d.id,...d.data()}));
+  ready.sch=true; checkReady(); syncOk();
+  renderSchedeList(); renderAlStart();
+}, syncErr);
+
+/* ════════════════════ ESERCIZI ════════════════════ */
+let pendingImg=null;
+
+function renderExercises() {
+  const ul=$('ex-list'); ul.innerHTML='';
+  $('no-ex').style.display=exercises.length?'none':'block';
+  exercises.forEach(ex=>{
+    const li=el('li');
+    li.appendChild(makeIcon(ex,44));
+    const nm=el('span'); nm.className='ex-name'; nm.textContent=ex.name;
+    const ac=el('div');  ac.className='ex-actions';
+    const eb=el('button'); eb.textContent='🖼'; eb.className='btn-sm';
+    eb.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px';
+    const db=el('button'); db.textContent='Elimina'; db.className='btn-sm';
+    db.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px;color:#888';
+    eb.onclick=()=>openIconModal(ex.id);
+    db.onclick=async()=>{
+      if (!confirm(`Eliminare "${ex.name}"?`)) return;
+      syncWait();
+      const b=writeBatch(db);
+      logs.filter(l=>l.exerciseId===ex.id).forEach(l=>b.delete(doc(db,'logs',l.id)));
+      b.delete(doc(db,'exercises',ex.id));
+      await b.commit();
+    };
+    ac.append(eb,db); li.append(nm,ac); ul.appendChild(li);
+  });
+}
+
+$('file-img').addEventListener('change',function(){
+  if (!this.files[0]) return;
+  resizeImg(this.files[0],b64=>{
+    pendingImg=b64; $('img-prev').src=b64; $('img-prev').classList.add('visible');
+    $('img-lbl').textContent='✓ Immagine pronta';
+  });
+});
+
+async function doAddEx() {
+  const name=$('inp-ex-name').value.trim();
   if (!name) return;
   if (exercises.some(e=>e.name.toLowerCase()===name.toLowerCase())) { alert('Già presente.'); return; }
   syncWait();
-  await addDoc(colEx,{name, image:pendingImg||null, createdAt:serverTimestamp()});
-  $('new-ex-name').value=''; pendingImg=null;
-  $('file-input').value=''; $('add-preview').src='';
-  $('add-preview').classList.remove('visible');
-  $('add-upload-lbl').textContent='📷 Aggiungi immagine (opzionale)';
+  await addDoc(colEx,{name,image:pendingImg||null,createdAt:serverTimestamp()});
+  $('inp-ex-name').value=''; pendingImg=null;
+  $('file-img').value=''; $('img-prev').src=''; $('img-prev').classList.remove('visible');
+  $('img-lbl').textContent='📷 Aggiungi immagine (opzionale)';
 }
-$('btn-add-ex').onclick = addExercise;
-$('new-ex-name').addEventListener('keydown',e=>{ if(e.key==='Enter') addExercise(); });
+$('btn-add-ex').addEventListener('click', doAddEx);
+$('inp-ex-name').addEventListener('keydown',e=>{ if(e.key==='Enter') doAddEx(); });
 
-/* ── modal icona ── */
+/* ── Modal icona ── */
 let editIconId=null, modalIconImg=null;
 
 function openIconModal(exId) {
-  const ex = exercises.find(e=>e.id===exId);
+  const ex=exercises.find(e=>e.id===exId);
   editIconId=exId; modalIconImg=ex.image||null;
-  $('modal-icon-title').textContent=`Icona: ${ex.name}`;
-  renderIconPreview();
-  $('modal-icon').classList.add('open');
+  $('mi-title').textContent=`Icona: ${ex.name}`;
+  renderIconPrev(); $('modal-icon').classList.add('open');
 }
-function renderIconPreview() {
-  const c=$('modal-icon-preview'); c.innerHTML='';
+function renderIconPrev() {
+  const c=$('mi-preview'); c.innerHTML='';
   if (modalIconImg) {
-    const img=document.createElement('img'); img.src=modalIconImg;
-    img.style.cssText='width:80px;height:80px;object-fit:cover;border:1px solid #ddd;display:block;margin:0 auto 10px';
-    c.appendChild(img);
+    const i=el('img'); i.src=modalIconImg;
+    i.style.cssText='width:80px;height:80px;object-fit:cover;border:1px solid #ddd;display:block;margin:0 auto 10px';
+    c.appendChild(i);
   } else {
-    c.innerHTML='<div style="width:80px;height:80px;background:#f2f2f2;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 10px">🏋️</div>';
+    const d=el('div');
+    d.style.cssText='width:80px;height:80px;background:#f2f2f2;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 10px';
+    d.textContent='🏋️'; c.appendChild(d);
   }
 }
-$('modal-file-input').addEventListener('change',function(){
+$('file-icon').addEventListener('change',function(){
   if (!this.files[0]) return;
-  resizeImg(this.files[0],80,b64=>{ modalIconImg=b64; renderIconPreview(); });
+  resizeImg(this.files[0],b64=>{ modalIconImg=b64; renderIconPrev(); });
 });
-$('modal-icon-remove').onclick = ()=>{ modalIconImg=null; renderIconPreview(); };
-$('modal-icon-cancel').onclick = ()=>{ $('modal-icon').classList.remove('open'); };
-$('modal-icon-save').onclick   = async ()=>{
+$('mi-remove').addEventListener('click',()=>{ modalIconImg=null; renderIconPrev(); });
+$('mi-cancel').addEventListener('click',()=>$('modal-icon').classList.remove('open'));
+$('mi-save').addEventListener('click',async()=>{
   syncWait();
   await updateDoc(doc(db,'exercises',editIconId),{image:modalIconImg||null});
   $('modal-icon').classList.remove('open');
-};
+});
 $('modal-icon').addEventListener('click',e=>{ if(e.target===$('modal-icon')) $('modal-icon').classList.remove('open'); });
 
-/* ════════════════════════════════════════
-   TAB SCHEDE
-════════════════════════════════════════ */
-let editingSchedaId = null;   // null = nuova, stringa = modifica
-let editingBlocchi  = [];     // [{localId, name, giri, esercizi:[{localId,exId,sovraccarico}]}]
+/* ════════════════════ SCHEDE ════════════════════ */
+let editSchedaId=null, editBlocchi=[];
 
 function renderSchedeList() {
-  const el=$('schede-list');
-  el.innerHTML='';
-  $('no-schede').style.display = schede.length===0?'block':'none';
+  const cont=$('schede-list'); cont.innerHTML='';
+  $('no-schede').style.display=schede.length?'none':'block';
   schede.forEach(s=>{
-    const totBlocchi = (s.blocchi||[]).length;
-    const totEx      = (s.blocchi||[]).reduce((a,b)=>a+(b.esercizi||[]).length,0);
-    const row = document.createElement('div');
-    row.className='scheda-row';
-    row.innerHTML=`
-      <div class="s-info">
-        <div class="s-name">${s.name}</div>
-        <div class="s-sub">${totBlocchi} blocch${totBlocchi===1?'o':'i'} · ${totEx} eserciz${totEx===1?'io':'i'}</div>
-      </div>
-      <div class="s-btn">
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px">Modifica</button>
-        <button class="btn btn-ghost-red" style="font-size:12px;padding:6px 10px">Elimina</button>
-      </div>`;
-    row.querySelector('.btn-ghost').onclick = e=>{ e.stopPropagation(); openSchedaEditor(s.id); };
-    row.querySelector('.btn-ghost-red').onclick = async e=>{
-      e.stopPropagation();
-      if (!confirm(`Eliminare la scheda "${s.name}"?`)) return;
+    const totB=(s.blocchi||[]).length;
+    const totE=(s.blocchi||[]).reduce((a,b)=>a+(b.esercizi||[]).length,0);
+    const row=el('div'); row.className='scheda-row';
+
+    const nm=el('div'); nm.className='s-name'; nm.textContent=s.name;
+    const sub=el('div'); sub.className='s-sub';
+    sub.textContent=`${totB} blocch${totB===1?'o':'i'} · ${totE} eserciz${totE===1?'io':'i'}`;
+    const btns=el('div'); btns.className='s-btns';
+
+    const bMod=el('button'); bMod.className='btn btn-ghost btn-sm'; bMod.textContent='Modifica';
+    const bDel=el('button'); bDel.className='btn btn-ghost-red btn-sm'; bDel.textContent='Elimina';
+    bMod.addEventListener('click',()=>openEditor(s.id));
+    bDel.addEventListener('click',async()=>{
+      if (!confirm(`Eliminare "${s.name}"?`)) return;
       syncWait(); await deleteDoc(doc(db,'schede',s.id));
-    };
-    el.appendChild(row);
+    });
+    btns.append(bMod,bDel);
+    row.append(nm,sub,btns);
+    cont.appendChild(row);
   });
 }
 
-$('btn-nuova-scheda').onclick = ()=> openSchedaEditor(null);
+$('btn-nuova-scheda').addEventListener('click',()=>openEditor(null));
 
-function openSchedaEditor(schedaId) {
-  editingSchedaId = schedaId;
+function openEditor(schedaId) {
+  editSchedaId=schedaId;
   if (schedaId) {
-    const s = schede.find(x=>x.id===schedaId);
-    $('scheda-name-inp').value = s.name;
-    $('editor-title').textContent = 'Modifica scheda';
-    // clona i blocchi con localId
-    editingBlocchi = (s.blocchi||[]).map(b=>({
-      localId: uid(),
-      name: b.name,
-      giri: b.giri,
-      esercizi: (b.esercizi||[]).map(e=>({localId:uid(), exId:e.exId, sovraccarico:e.sovraccarico}))
+    const s=schede.find(x=>x.id===schedaId);
+    $('inp-scheda-name').value=s.name;
+    $('editor-title').textContent='Modifica scheda';
+    editBlocchi=(s.blocchi||[]).map(b=>({
+      lid:uid(), name:b.name, giri:b.giri,
+      esercizi:(b.esercizi||[]).map(e=>({
+        lid:uid(), exId:e.exId,
+        tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
+        durata:e.durata||null
+      }))
     }));
   } else {
-    $('scheda-name-inp').value='';
-    $('editor-title').textContent = 'Nuova scheda';
-    editingBlocchi = [];
+    $('inp-scheda-name').value='';
+    $('editor-title').textContent='Nuova scheda';
+    editBlocchi=[];
   }
-  renderBlocchiEditor();
-  $('schede-list-view').style.display='none';
+  renderBlocchi();
+  $('view-schede').style.display='none';
   $('scheda-editor').style.display='block';
 }
 
-function closeSchedaEditor() {
+function closeEditor() {
   $('scheda-editor').style.display='none';
-  $('schede-list-view').style.display='block';
+  $('view-schede').style.display='block';
 }
 
-$('btn-annulla-editor').onclick = closeSchedaEditor;
+$('btn-annulla').addEventListener('click', closeEditor);
 
-$('btn-salva-scheda').onclick = async ()=>{
-  const name = $('scheda-name-inp').value.trim();
+/* ── Salva scheda ── */
+async function doSalva() {
+  const name=$('inp-scheda-name').value.trim();
   if (!name) { alert('Inserisci un nome per la scheda.'); return; }
   syncWait();
-  const data = {
+  const data={
     name,
-    blocchi: editingBlocchi.map(b=>({
-      name: b.name,
-      giri: b.giri,
-      esercizi: b.esercizi.map(e=>({
-        exId:   e.exId,
-        tipo:   e.tipo   || 'solo',
-        durata: e.durata || null
+    blocchi: editBlocchi.map(b=>({
+      name:b.name, giri:b.giri,
+      esercizi:b.esercizi.map(e=>({
+        exId:e.exId,
+        tipo:e.tipo||'solo',
+        durata:e.durata||null
       }))
     }))
   };
   try {
-    if (editingSchedaId) {
-      await updateDoc(doc(db,'schede',editingSchedaId), data);
+    if (editSchedaId) {
+      await updateDoc(doc(db,'schede',editSchedaId),data);
     } else {
-      data.createdAt = serverTimestamp();
-      await addDoc(colSchede, data);
+      data.createdAt=serverTimestamp();
+      await addDoc(colSch,data);
     }
-    closeSchedaEditor();
+    closeEditor();
   } catch(err) {
-    alert('Errore salvataggio: ' + err.message);
-    syncErr();
+    alert('Errore: '+err.message); syncErr();
   }
-};
+}
+$('btn-salva').addEventListener('click', doSalva);
 
-/* ── stato pendente add-esercizio per ogni blocco (tipo scelto prima di premere +) ── */
-const pendingTipo = {}; // localId → {tipo, durata}
+/* ── Render blocchi — tutto DOM, zero innerHTML sui controlli ── */
+function renderBlocchi() {
+  const cont=$('blocchi-cont'); cont.innerHTML='';
+  editBlocchi.forEach((b,bi)=>{
+    // wrapper blocco
+    const wrap=el('div'); wrap.className='blocco-editor';
 
-/* ── render editor blocchi ── */
-function renderBlocchiEditor() {
-  const cont = $('blocchi-container');
-  cont.innerHTML='';
-  editingBlocchi.forEach((blocco,bi)=>{
-    const div = document.createElement('div');
-    div.className='blocco-editor';
-    div.innerHTML=`
-      <div class="blocco-header">
-        <span class="b-title">${blocco.name}</span>
-        <span class="b-giri">${blocco.giri} gir${blocco.giri===1?'o':'i'}</span>
-        <button type="button" class="b-del" data-bi="${bi}">✕</button>
-      </div>
-      <div class="blocco-body">
-        <ul class="blocco-ex-list" id="bel-${blocco.localId}"></ul>
-        <div class="add-ex-to-blocco">
-          <select class="inp" id="sel-ex-${blocco.localId}">
-            <option value="">+ Aggiungi esercizio…</option>
-            ${exercises.map(ex=>`<option value="${ex.id}">${ex.name}</option>`).join('')}
-          </select>
-          <select class="inp" id="sel-tipo-${blocco.localId}" style="width:auto;min-width:90px;font-size:13px;padding:8px 6px">
-            <option value="solo">Solo</option>
-            <option value="peso">Peso</option>
-            <option value="tempo">Tempo</option>
-          </select>
-          <input type="number" id="inp-durata-${blocco.localId}" min="1" max="3600" placeholder="sec"
-            style="display:none;width:60px;border:1px solid #ccc;padding:8px 6px;font-size:13px;font-family:Arial,sans-serif;outline:none" />
-          <button type="button" class="btn btn-dark" style="padding:8px 12px;font-size:13px" data-bid="${blocco.localId}">+</button>
-        </div>
-      </div>`;
-    div.querySelector('.b-del').onclick = ()=>{
-      editingBlocchi.splice(bi,1); renderBlocchiEditor();
-    };
-    div.querySelector(`button[data-bid="${blocco.localId}"]`).onclick = ()=>{
-      const sel    = $(`sel-ex-${blocco.localId}`);
-      const selTipo= $(`sel-tipo-${blocco.localId}`);
-      const inpDur = $(`inp-durata-${blocco.localId}`);
-      if (!sel.value) return;
-      const tipo   = selTipo.value;
-      const durata = tipo==='tempo' ? (parseInt(inpDur.value)||60) : null;
-      blocco.esercizi.push({localId:uid(), exId:sel.value, tipo, durata});
-      // resetta stato pendente per questo blocco
-      pendingTipo[blocco.localId] = {tipo:'solo', durata:''};
-      renderBlocchiEditor();
-    };
-    // ripristina tipo selezionato prima del re-render e aggancia listener
-    setTimeout(()=>{
-      const selTipo = $(`sel-tipo-${blocco.localId}`);
-      const inpDur  = $(`inp-durata-${blocco.localId}`);
-      if (!selTipo) return;
-      // ripristina valore salvato
-      const saved = pendingTipo[blocco.localId];
-      if (saved) {
-        selTipo.value = saved.tipo;
-        if (saved.tipo==='tempo') { inpDur.style.display='block'; inpDur.value=saved.durata||''; }
-      }
-      // salva ogni cambio in pendingTipo
-      selTipo.addEventListener('change', ()=>{
-        if (!pendingTipo[blocco.localId]) pendingTipo[blocco.localId]={};
-        pendingTipo[blocco.localId].tipo = selTipo.value;
-        inpDur.style.display = selTipo.value==='tempo' ? 'block' : 'none';
-      });
-      inpDur.addEventListener('input', ()=>{
-        if (!pendingTipo[blocco.localId]) pendingTipo[blocco.localId]={};
-        pendingTipo[blocco.localId].durata = inpDur.value;
-      });
-    }, 0);
-    cont.appendChild(div);
-    renderBloccoExList(blocco);
+    // header
+    const hdr=el('div'); hdr.className='blocco-header';
+    const hnm=el('span'); hnm.className='bh-name'; hnm.textContent=b.name;
+    const hgiri=el('span'); hgiri.className='bh-giri'; hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'}`;
+    const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
+    hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
+    hdr.append(hnm,hgiri,hdel);
+
+    // body
+    const body=el('div'); body.className='blocco-body';
+
+    // lista esercizi
+    const ul=el('ul'); ul.className='bei-list';
+    b.esercizi.forEach((item,ei)=>{
+      const ex=exercises.find(e=>e.id===item.exId);
+      if (!ex) return;
+      const li=el('li'); li.className='bei-item';
+      li.appendChild(makeIcon(ex,30));
+      const nm=el('span'); nm.className='bei-name'; nm.textContent=ex.name;
+      const tag=el('span'); tag.className='bei-tag';
+      tag.textContent = item.tipo==='peso'?'Peso': item.tipo==='tempo'?`⏱ ${fmtSec(item.durata||60)}`:'Solo';
+      const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
+      del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
+      li.append(nm,tag,del); ul.appendChild(li);
+    });
+
+    // riga aggiungi esercizio
+    const addRow=el('div'); addRow.className='add-ex-row';
+
+    // select esercizio
+    const selEx=el('select'); selEx.className='inp';
+    const optVuota=el('option'); optVuota.value=''; optVuota.textContent='Scegli esercizio…';
+    selEx.appendChild(optVuota);
+    exercises.forEach(ex=>{
+      const o=el('option'); o.value=ex.id; o.textContent=ex.name; selEx.appendChild(o);
+    });
+
+    // riga tipo + durata + bottone +
+    const inline=el('div'); inline.className='add-ex-row-inline';
+
+    const selTipo=el('select'); selTipo.className='sel-tipo';
+    [['solo','Solo'],['peso','Peso'],['tempo','Tempo']].forEach(([v,l])=>{
+      const o=el('option'); o.value=v; o.textContent=l; selTipo.appendChild(o);
+    });
+
+    const inpDur=el('input');
+    inpDur.type='number'; inpDur.min='1'; inpDur.max='3600';
+    inpDur.placeholder='sec'; inpDur.className='inp-durata';
+    inpDur.inputMode='numeric';
+
+    selTipo.addEventListener('change',()=>{
+      inpDur.style.display=selTipo.value==='tempo'?'block':'none';
+    });
+
+    const btnPlus=el('button'); btnPlus.type='button'; btnPlus.className='btn btn-dark btn-sm';
+    btnPlus.textContent='+'; btnPlus.style.minHeight='52px'; btnPlus.style.padding='0 18px';
+    btnPlus.addEventListener('click',()=>{
+      if (!selEx.value) { alert('Scegli un esercizio.'); return; }
+      const tipo=selTipo.value;
+      const durata=tipo==='tempo'?(parseInt(inpDur.value)||60):null;
+      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata});
+      renderBlocchi();
+    });
+
+    inline.append(selTipo, inpDur, btnPlus);
+    addRow.append(selEx, inline);
+    body.append(ul, addRow);
+    wrap.append(hdr, body);
+    cont.appendChild(wrap);
   });
 }
 
-function renderBloccoExList(blocco) {
-  const ul = $(`bel-${blocco.localId}`);
-  if (!ul) return;
-  ul.innerHTML='';
-  blocco.esercizi.forEach((item,ei)=>{
-    const ex = exercises.find(e=>e.id===item.exId);
-    if (!ex) return;
-    const li = document.createElement('li');
-    li.className='blocco-ex-item';
-    const iconEl = ex.image
-      ? `<img src="${ex.image}" class="bei-icon" alt="" />`
-      : `<div class="bei-ph">🏋️</div>`;
-    li.innerHTML=`
-      ${iconEl}
-      <span class="bei-name">${ex.name}</span>
-      <span class="bei-tag">${item.tipo==='peso'?'Peso':item.tipo==='tempo'?`⏱ ${fmtSec(item.durata||60)}`:'Solo'}</span>
-      <button type="button" class="bei-del" data-ei="${ei}">✕</button>`;
-    li.querySelector('.bei-del').onclick = ()=>{
-      blocco.esercizi.splice(ei,1); renderBlocchiEditor();
-    };
-    ul.appendChild(li);
-  });
-}
-
-/* ── modal nuovo blocco ── */
-$('btn-add-blocco').onclick = ()=>{ $('mb-name').value=''; $('mb-giri').value=3; $('modal-blocco').classList.add('open'); };
-$('mb-cancel').onclick = ()=> $('modal-blocco').classList.remove('open');
-$('mb-save').onclick = ()=>{
-  const name = $('mb-name').value.trim();
-  const giri = parseInt($('mb-giri').value)||3;
-  if (!name) { alert('Dai un nome al blocco.'); return; }
-  editingBlocchi.push({localId:uid(), name, giri, esercizi:[]});
-  renderBlocchiEditor();
+/* ── Modal nuovo blocco ── */
+$('btn-add-blocco').addEventListener('click',()=>{
+  $('mb-name').value=''; $('mb-giri').value=3; $('modal-blocco').classList.add('open');
+  setTimeout(()=>$('mb-name').focus(),100);
+});
+$('mb-cancel').addEventListener('click',()=>$('modal-blocco').classList.remove('open'));
+$('mb-save').addEventListener('click',()=>{
+  const name=$('mb-name').value.trim();
+  const giri=parseInt($('mb-giri').value)||3;
+  if (!name) { alert('Inserisci un nome.'); return; }
+  editBlocchi.push({lid:uid(),name,giri,esercizi:[]});
+  renderBlocchi();
   $('modal-blocco').classList.remove('open');
-};
+});
 
-/* ════════════════════════════════════════
-   TAB ALLENAMENTO
-════════════════════════════════════════ */
-
+/* ════════════════════ ALLENAMENTO ════════════════════ */
 function renderAlStart() {
-  const sel = $('al-scheda-select');
-  const prev = sel.value;
+  const sel=$('al-sel-scheda');
   sel.innerHTML='<option value="">— seleziona —</option>';
   schede.forEach(s=>{
-    const o=document.createElement('option'); o.value=s.id; o.textContent=s.name;
-    sel.appendChild(o);
+    const o=el('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o);
   });
-  if (prev) sel.value=prev;
-  $('no-schede-al').style.display = schede.length===0?'block':'none';
+  $('no-schede-al').style.display=schede.length?'none':'block';
 }
 
-// struttura sessione corrente
-let session = null;
-/*
-session = {
-  schedaId, schedaName,
-  steps: [{bloccoIdx, bloccoName, giro, exIdx, exId, sovraccarico}],
-  currentStep: 0,
-  results: [{stepIdx, reps, weight, skipped}]
-}
-*/
+// quick reps buttons
+const QR=[6,8,10,12,15];
+const qrCont=$('qr-btns');
+QR.forEach(n=>{
+  const b=el('button'); b.type='button'; b.textContent=n;
+  b.addEventListener('click',()=>{ $('al-reps').value=n; $('al-kg').focus(); });
+  qrCont.appendChild(b);
+});
 
-$('btn-inizia-al').onclick = ()=>{
-  const sid = $('al-scheda-select').value;
+/* struttura sessione */
+let sess=null;
+
+$('btn-inizia').addEventListener('click',()=>{
+  const sid=$('al-sel-scheda').value;
   if (!sid) { alert('Scegli una scheda.'); return; }
-  const s = schede.find(x=>x.id===sid);
-  if (!s || !(s.blocchi||[]).length) { alert('La scheda non ha blocchi. Modificala prima.'); return; }
+  const s=schede.find(x=>x.id===sid);
+  if (!s||(s.blocchi||[]).length===0) { alert('La scheda non ha blocchi.'); return; }
 
-  // costruisce la lista piatta di step
-  const steps = [];
+  // costruisce lista piatta di step
+  const steps=[];
   (s.blocchi||[]).forEach((b,bi)=>{
-    for (let g=1; g<=b.giri; g++) {
+    for (let g=1;g<=b.giri;g++) {
       (b.esercizi||[]).forEach((e,ei)=>{
-        steps.push({ bloccoIdx:bi, bloccoName:b.name, giro:g, giriTot:b.giri,
-          exIdx:ei, exId:e.exId, tipo:e.tipo||'solo', durata:e.durata||null,
-          // retrocompatibilità con schede vecchie (sovraccarico bool)
-          ...(e.sovraccarico!==undefined && e.tipo===undefined ? {tipo: e.sovraccarico?'peso':'solo'} : {})
+        steps.push({
+          bi, bName:b.name, giro:g, giriTot:b.giri,
+          ei, exId:e.exId,
+          tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
+          durata:e.durata||null
         });
       });
     }
   });
   if (!steps.length) { alert('Nessun esercizio nella scheda.'); return; }
 
-  session = { schedaId:sid, schedaName:s.name, steps, currentStep:0, results:[], sessionTs: Date.now() };
-  $('allenamento-start').style.display='none';
-  $('allenamento-session').style.display='block';
-  progressWrap.style.display='block';
-  renderSessionStep();
-};
+  sess={sid, sName:s.name, steps, cur:0, results:[], ts:Date.now()};
+  $('al-start').style.display='none';
+  $('al-session').style.display='block';
+  renderStep();
+});
 
-window.alSetReps = n => { $('al-reps').value=n; $('al-weight').focus(); };
-
-function getLastData(exId) {
-  // ultimi N log per questo esercizio nella sessione corrente e passate
-  const exLogs = logs.filter(l=>l.exerciseId===exId && l.reps)
+function getLastLogs(exId) {
+  return logs.filter(l=>l.exerciseId===exId&&l.reps)
     .sort((a,b)=>(b.clientTs||0)-(a.clientTs||0));
-  return exLogs; // più recente per primo
 }
 
 function buildHint(exId) {
-  const exLogs = getLastData(exId);
-  if (!exLogs.length) return '<span style="color:#aaa">Prima volta — registra pure!</span>';
-
-  // raggruppa per sessionId (stesso allenamento = stessa sessione)
-  // prende l'ultima sessione in cui è comparso
-  const lastSession = exLogs[0].sessionId;
-  const lastSessionLogs = exLogs.filter(l=>l.sessionId===lastSession);
-  const repsArr = lastSessionLogs.map(l=>l.reps).filter(Boolean);
-  const weightArr = lastSessionLogs.map(l=>l.weight).filter(v=>v!=null);
-
+  const ll=getLastLogs(exId);
+  if (!ll.length) return '<span style="color:#aaa">Prima volta!</span>';
+  const lastSess=ll[0].sessionId;
+  const sessLogs=ll.filter(l=>l.sessionId===lastSess);
+  const repsArr=sessLogs.map(l=>l.reps).filter(Boolean);
+  const wArr=sessLogs.map(l=>l.weight).filter(v=>v!=null);
   if (!repsArr.length) return '';
-  const minReps = Math.min(...repsArr);
-  const maxReps = Math.max(...repsArr);
-  const lastWeight = weightArr.length ? weightArr[0] : null;
-  const wStr = lastWeight!=null ? ` × ${lastWeight} kg` : '';
-
-  if (minReps>=15) {
-    return `<span class="hint-up">⬆ Aumenta il peso! Ultima sessione: ${minReps}-${maxReps} reps${wStr}</span>`;
-  }
-  return `<span class="hint-more">Ultima sessione: ${minReps}-${maxReps} reps${wStr} → prova +1 rep</span>`;
+  const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
+  const w=wArr.length?wArr[0]:null;
+  const ws=w!=null?` × ${w} kg`:'';
+  if (minR>=15) return `<span class="hint-up">⬆ Aumenta il peso! Ultima: ${minR}-${maxR} reps${ws}</span>`;
+  return `<span class="hint-more">Ultima: ${minR}-${maxR} reps${ws} → prova +1</span>`;
 }
 
-function renderSessionStep() {
-  if (!session) return;
-  const { steps, currentStep } = session;
+function renderStep() {
+  if (!sess) return;
+  const {steps,cur}=sess;
+  const step=steps[cur];
 
-  // aggiorna progress bar
-  const pct = Math.round((currentStep/steps.length)*100);
-  progressFill.style.width=pct+'%';
-  $('sh-prog').textContent=`${currentStep+1}/${steps.length}`;
+  // progress
+  const pct=Math.round((cur/steps.length)*100);
+  $('prog-fill').style.width=pct+'%';
+  $('sh-prog').textContent=`${cur+1}/${steps.length}`;
+  $('sh-giro').textContent=`Giro ${step.giro}/${step.giriTot}`;
+  $('sh-blocco').textContent=step.bName;
 
-  // nascondi riepilogo e fine
-  $('giro-summary-wrap').style.display='none';
-  $('session-end-wrap').style.display='none';
-  $('current-ex-card').style.display='block';
-  document.querySelector('.session-nav').style.display='flex';
+  // nascondi riepilogo/fine
+  $('giro-wrap').style.display='none';
+  $('end-wrap').style.display='none';
+  $('ex-card').style.display='block';
+  $('btn-skip').style.display='';
+  $('btn-next').style.display='';
 
-  const step = steps[currentStep];
-  const ex   = exercises.find(e=>e.id===step.exId);
-
-  // header
-  $('sh-blocco').textContent = step.bloccoName;
-  $('sh-giro').textContent   = `Giro ${step.giro}/${step.giriTot}`;
+  const ex=exercises.find(e=>e.id===step.exId);
 
   // icona
-  const iconWrap = $('cet-icon');
-  iconWrap.innerHTML='';
-  if (ex?.image) {
-    const img=document.createElement('img');
-    img.src=ex.image; img.alt=ex.name;
-    img.style.cssText='width:56px;height:56px;object-fit:cover;border:1px solid #ddd;';
-    iconWrap.appendChild(img);
-  } else {
-    iconWrap.innerHTML='<div class="cet-ph">🏋️</div>';
-  }
+  const ic=$('ect-icon'); ic.innerHTML='';
+  ic.appendChild(makeIcon(ex,60));
+  $('ect-name').textContent=ex?.name||'—';
+  $('ect-hint').innerHTML=step.tipo==='peso'?buildHint(step.exId):'';
 
-  $('cet-name').textContent = ex?.name||'—';
+  // form
+  $('form-peso').style.display  = step.tipo==='peso'  ? 'block':'none';
+  $('form-solo').style.display  = step.tipo==='solo'  ? 'block':'none';
+  $('form-timer').style.display = step.tipo==='tempo' ? 'block':'none';
 
-  // hint progressione (solo per esercizi con peso)
   if (step.tipo==='peso') {
-    $('cet-hint').innerHTML = buildHint(step.exId);
-  } else {
-    $('cet-hint').textContent='';
+    $('al-reps').value='';
+    const last=getLastLogs(step.exId)[0];
+    $('al-kg').value=last?.weight!=null?last.weight:'';
   }
-
-  // form corretto in base al tipo
-  $('cet-form-peso').style.display  = step.tipo==='peso'  ? 'block' : 'none';
-  $('cet-form-fatto').style.display = step.tipo==='solo'  ? 'block' : 'none';
-  $('cet-form-timer').style.display = step.tipo==='tempo' ? 'block' : 'none';
-  $('al-reps').value=''; $('al-weight').value='';
-
-  // precompila con ultimo peso usato
-  if (step.tipo==='peso') {
-    const last = getLastData(step.exId)[0];
-    if (last?.weight!=null) $('al-weight').value=last.weight;
-  }
-
-  // inizializza timer se tipo tempo
-  if (step.tipo==='tempo') {
-    initTimer(step.durata||60);
-  }
+  if (step.tipo==='tempo') initTimer(step.durata||60);
 }
 
-$('btn-al-next').onclick = async ()=>{
-  if (!session) return;
-  const step = session.steps[session.currentStep];
+/* ── next / skip ── */
+async function doNext() {
+  if (!sess) return;
+  const step=sess.steps[sess.cur];
 
   if (step.tipo==='peso') {
-    const reps = parseInt($('al-reps').value,10);
+    const reps=parseInt($('al-reps').value,10);
     if (!reps||reps<1) {
       $('al-reps').style.borderColor='#d0021b';
       $('al-reps').style.borderWidth='2px';
       $('al-reps').focus();
-      setTimeout(()=>{ $('al-reps').style.borderColor=''; $('al-reps').style.borderWidth=''; },1500);
+      setTimeout(()=>{ $('al-reps').style.borderColor=''; $('al-reps').style.borderWidth=''; },1400);
       return;
     }
-    const wv = $('al-weight').value.trim();
-    const weight = wv!==''?parseFloat(wv):null;
+    const wv=$('al-kg').value.trim();
+    const weight=wv!==''?parseFloat(wv):null;
     syncWait();
     await addDoc(colLogs,{
-      exerciseId: step.exId,
-      reps, weight,
-      sessionId: session.schedaId+'_'+session.sessionTs,
-      clientTs: Date.now(),
-      createdAt: serverTimestamp()
+      exerciseId:step.exId, reps, weight,
+      sessionId:`${sess.sid}_${sess.ts}`,
+      clientTs:Date.now(), createdAt:serverTimestamp()
     });
-    session.results.push({stepIdx:session.currentStep, reps, weight, skipped:false});
+    sess.results.push({stepIdx:sess.cur,reps,weight,skipped:false});
   } else if (step.tipo==='tempo') {
     stopTimer();
     syncWait();
     await addDoc(colLogs,{
-      exerciseId: step.exId,
-      reps: null, weight: null,
-      durata: step.durata||null,
-      sessionId: session.schedaId+'_'+session.sessionTs,
-      clientTs: Date.now(),
-      createdAt: serverTimestamp()
+      exerciseId:step.exId, reps:null, weight:null,
+      durata:step.durata||null,
+      sessionId:`${sess.sid}_${sess.ts}`,
+      clientTs:Date.now(), createdAt:serverTimestamp()
     });
-    session.results.push({stepIdx:session.currentStep, reps:null, weight:null, durata:step.durata, skipped:false});
+    sess.results.push({stepIdx:sess.cur,reps:null,weight:null,durata:step.durata,skipped:false});
   } else {
-    session.results.push({stepIdx:session.currentStep, reps:null, weight:null, skipped:false});
+    sess.results.push({stepIdx:sess.cur,reps:null,weight:null,skipped:false});
   }
 
-  advanceSession();
-};
-
-$('btn-al-skip').onclick = ()=>{
-  if (!session) return;
-  session.results.push({stepIdx:session.currentStep, reps:null, weight:null, skipped:true});
-  advanceSession();
-};
-
-function advanceSession() {
-  stopTimer(); // ferma eventuale timer attivo
-  session.currentStep++;
-  const { steps, currentStep } = session;
-
-  // controlla se è finito un giro (cambio giro o fine)
-  const prevStep = steps[currentStep-1];
-  const nextStep = steps[currentStep];
-  const giroFinito = !nextStep || nextStep.giro !== prevStep.giro || nextStep.bloccoIdx !== prevStep.bloccoIdx;
-
-  if (currentStep >= steps.length) {
-    // sessione completata
-    showSessionEnd();
-    return;
-  }
-
-  if (giroFinito) {
-    showGiroSummary(prevStep);
-  } else {
-    renderSessionStep();
-  }
+  advance();
 }
 
-function showGiroSummary(lastStep) {
-  // raccoglie i risultati del giro appena finito
-  const giroSteps = session.steps
-    .map((s,i)=>({...s,i}))
-    .filter(s=>s.giro===lastStep.giro && s.bloccoIdx===lastStep.bloccoIdx);
+function doSkip() {
+  if (!sess) return;
+  sess.results.push({stepIdx:sess.cur,skipped:true});
+  advance();
+}
 
-  $('gs-title').textContent=`Riepilogo — ${lastStep.bloccoName} Giro ${lastStep.giro}/${lastStep.giriTot}`;
-  const rows = $('gs-rows'); rows.innerHTML='';
+function advance() {
+  stopTimer();
+  const {steps,cur}=sess;
+  const prev=steps[cur];
+  sess.cur++;
+  if (sess.cur>=steps.length) { showEnd(); return; }
+  const next=steps[sess.cur];
+  const giroFinito=(next.giro!==prev.giro||next.bi!==prev.bi);
+  if (giroFinito) showGiroRiepilogo(prev);
+  else renderStep();
+}
+
+$('btn-next').addEventListener('click', doNext);
+$('btn-skip').addEventListener('click', doSkip);
+
+/* ── riepilogo giro ── */
+function showGiroRiepilogo(lastStep) {
+  $('ex-card').style.display='none';
+  $('btn-skip').style.display='none';
+  $('btn-next').style.display='none';
+
+  const giroSteps=sess.steps.map((s,i)=>({...s,i}))
+    .filter(s=>s.giro===lastStep.giro&&s.bi===lastStep.bi);
+
+  $('gr-title').textContent=`${lastStep.bName} — Giro ${lastStep.giro}/${lastStep.giriTot}`;
+  const rows=$('gr-rows'); rows.innerHTML='';
   giroSteps.forEach(s=>{
-    const res = session.results.find(r=>r.stepIdx===s.i);
-    const ex  = exercises.find(e=>e.id===s.exId);
+    const res=sess.results.find(r=>r.stepIdx===s.i);
+    const ex=exercises.find(e=>e.id===s.exId);
     let val;
-    if (!res||res.skipped)         val='<span style="color:#aaa">saltato</span>';
-    else if (s.tipo==='tempo')     val=`<span style="color:#1a7f37">⏱ ${fmtSec(s.durata||0)}</span>`;
-    else if (s.tipo!=='peso')      val='<span style="color:#1a7f37">✓ fatto</span>';
-    else {
-      const wStr = res.weight!=null?` × ${res.weight} kg`:'';
-      val=`<strong>${res.reps} reps${wStr}</strong>`;
-    }
-    rows.innerHTML+=`<div class="giro-summary-row"><span>${ex?.name||'—'}</span><span>${val}</span></div>`;
+    if (!res||res.skipped)       val='<span style="color:#aaa">saltato</span>';
+    else if (s.tipo==='tempo')   val=`<span style="color:#1a7f37">⏱ ${fmtSec(s.durata||0)}</span>`;
+    else if (s.tipo!=='peso')    val='<span style="color:#1a7f37">✓</span>';
+    else { const ws=res.weight!=null?` × ${res.weight} kg`:''; val=`<strong>${res.reps} reps${ws}</strong>`; }
+    const r=el('div'); r.className='recap-row';
+    r.innerHTML=`<span>${ex?.name||'—'}</span><span>${val}</span>`;
+    rows.appendChild(r);
   });
 
-  $('current-ex-card').style.display='none';
-  document.querySelector('.session-nav').style.display='none';
-  $('giro-summary-wrap').style.display='block';
-
-  const isLastGiroOfBlock = lastStep.giro===lastStep.giriTot;
-  const isLastBlock = !session.steps[session.currentStep] ||
-    session.steps[session.currentStep].bloccoIdx !== lastStep.bloccoIdx;
-  $('btn-prossimo-giro').textContent =
-    (isLastGiroOfBlock && isLastBlock) ? 'Prossimo blocco →' :
-    isLastGiroOfBlock ? 'Prossimo blocco →' : `Giro ${lastStep.giro+1}/${lastStep.giriTot} →`;
+  const nextStep=sess.steps[sess.cur];
+  $('btn-next-giro').textContent=nextStep
+    ? (nextStep.bi!==lastStep.bi?'Prossimo blocco →':`Giro ${lastStep.giro+1}/${lastStep.giriTot} →`)
+    : 'Fine allenamento';
+  $('giro-wrap').style.display='block';
 }
 
-$('btn-prossimo-giro').onclick = ()=>{
-  $('giro-summary-wrap').style.display='none';
-  renderSessionStep();
-};
+$('btn-next-giro').addEventListener('click',()=>{
+  $('giro-wrap').style.display='none';
+  if (sess.cur>=sess.steps.length) showEnd();
+  else renderStep();
+});
 
-function showSessionEnd() {
-  progressFill.style.width='100%';
-  $('current-ex-card').style.display='none';
-  document.querySelector('.session-nav').style.display='none';
-  $('giro-summary-wrap').style.display='none';
-  $('session-end-wrap').style.display='block';
-
-  const tot = session.results.filter(r=>!r.skipped&&r.reps).length;
-  $('session-end-msg').textContent=`${tot} set registrati. Ottimo lavoro!`;
-}
-
-$('btn-fine-sessione').onclick = ()=>{
-  session=null;
-  $('allenamento-session').style.display='none';
-  $('allenamento-start').style.display='block';
-  progressWrap.style.display='none';
-  progressFill.style.width='0%';
-};
-
-/* ════════════════════════════════════════
-   TIMER
-════════════════════════════════════════ */
-let timerTotal    = 0;
-let timerLeft     = 0;
-let timerInterval = null;
-const CIRCUMF     = 364.4; // 2π × 58
-
-function initTimer(seconds) {
+/* ── fine sessione ── */
+function showEnd() {
   stopTimer();
-  timerTotal = seconds;
-  timerLeft  = seconds;
+  $('prog-fill').style.width='100%';
+  $('ex-card').style.display='none';
+  $('giro-wrap').style.display='none';
+  $('btn-skip').style.display='none';
+  $('btn-next').style.display='none';
+  const tot=sess.results.filter(r=>!r.skipped&&r.reps).length;
+  $('end-msg').textContent=`${tot} set registrati. Ottimo lavoro!`;
+  $('end-wrap').style.display='block';
+}
+
+$('btn-fine').addEventListener('click',()=>{
+  sess=null;
+  $('al-session').style.display='none';
+  $('al-start').style.display='block';
+  $('prog-fill').style.width='0';
+});
+
+/* ════════════════════ TIMER ════════════════════ */
+const CIRC=389.6; // 2π × 62
+let tTotal=0, tLeft=0, tInterval=null;
+
+function initTimer(sec) {
+  stopTimer();
+  tTotal=sec; tLeft=sec;
   updateTimerUI();
-  $('btn-timer-start').textContent = '▶ Avvia timer';
-  $('btn-timer-start').style.background = '';
+  $('btn-t-start').textContent='▶ Avvia';
+  $('btn-t-start').style.background='';
 }
-
 function updateTimerUI() {
-  const circle = $('timer-circle');
-  const text   = $('timer-text');
-  if (!circle || !text) return;
-  const pct    = timerLeft / timerTotal;
-  circle.style.strokeDashoffset = CIRCUMF * (1 - pct);
-  // colore: verde quando finito
-  circle.style.stroke = timerLeft===0 ? '#1a7f37' : '#d0021b';
-  text.textContent    = fmtSecTimer(timerLeft);
-  text.style.fill     = timerLeft===0 ? '#1a7f37' : '#1c1c1c';
+  const pct=tLeft/tTotal;
+  const circle=$('t-circle'), text=$('t-text');
+  if (!circle) return;
+  circle.style.strokeDashoffset=CIRC*(1-pct);
+  circle.style.stroke=tLeft===0?'#1a7f37':'#d0021b';
+  text.textContent=fmtTimer(tLeft);
+  text.style.fill=tLeft===0?'#1a7f37':'#1c1c1c';
 }
-
 function startTimer() {
-  if (timerInterval) return; // già in corso
-  if (timerLeft <= 0) { initTimer(timerTotal); } // riparti dall'inizio se finito
-  $('btn-timer-start').textContent  = '⏸ Pausa';
-  $('btn-timer-start').style.background = '#1c1c1c';
-  timerInterval = setInterval(()=>{
-    timerLeft--;
-    updateTimerUI();
-    if (timerLeft <= 0) {
+  if (tInterval) return;
+  if (tLeft<=0) { tLeft=tTotal; }
+  $('btn-t-start').textContent='⏸ Pausa';
+  $('btn-t-start').style.background='#333';
+  tInterval=setInterval(()=>{
+    tLeft--; updateTimerUI();
+    if (tLeft<=0) {
       stopTimer();
-      $('btn-timer-start').textContent  = '✓ Completato!';
-      $('btn-timer-start').style.background = '#1a7f37';
-      // vibra se il dispositivo lo supporta
+      $('btn-t-start').textContent='✓ Completato!';
+      $('btn-t-start').style.background='#1a7f37';
       if (navigator.vibrate) navigator.vibrate([300,100,300]);
     }
-  }, 1000);
+  },1000);
 }
-
 function pauseTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  $('btn-timer-start').textContent = '▶ Riprendi';
-  $('btn-timer-start').style.background = '';
+  clearInterval(tInterval); tInterval=null;
+  $('btn-t-start').textContent='▶ Riprendi';
+  $('btn-t-start').style.background='';
 }
+function stopTimer() { clearInterval(tInterval); tInterval=null; }
 
-function stopTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-}
+$('btn-t-start').addEventListener('click',()=>{ tInterval?pauseTimer():startTimer(); });
+$('btn-t-reset').addEventListener('click',()=>initTimer(tTotal));
 
-$('btn-timer-start').onclick = ()=>{
-  if (timerInterval) pauseTimer();
-  else startTimer();
-};
-$('btn-timer-reset').onclick = ()=>{ initTimer(timerTotal); };
-
-/* ════════════════════════════════════════
-   TAB STORICO
-════════════════════════════════════════ */
-function renderHistorySelect() {
-  const sel=$('history-select');
+/* ════════════════════ STORICO ════════════════════ */
+function renderStoriaSelect() {
+  const sel=$('storia-sel');
   const prev=sel.value;
   sel.innerHTML='<option value="">— tutti —</option>';
   exercises.forEach(ex=>{
-    const o=document.createElement('option'); o.value=ex.id; o.textContent=ex.name;
-    sel.appendChild(o);
+    const o=el('option'); o.value=ex.id; o.textContent=ex.name; sel.appendChild(o);
   });
-  if (prev) { sel.value=prev; renderHistory(prev); }
-  else renderHistory('');
+  if (prev) sel.value=prev;
+  renderStoria(sel.value||'');
 }
 
-function renderHistory(exId) {
-  const filtered = exId
+function renderStoria(exId) {
+  const filtered=exId
     ? logs.filter(l=>l.exerciseId===exId)
-    : logs.filter(l=>l.reps);  // in "tutti" mostra solo log con reps
-
-  const sorted = [...filtered].sort((a,b)=>(b.clientTs||0)-(a.clientTs||0));
-  const cont=$('history-content');
-
-  if (!sorted.length) {
-    cont.innerHTML='<div class="empty-msg">Nessun log ancora.</div>'; return;
-  }
-
-  const showEx = !exId;
-  const table=document.createElement('table'); table.className='history-table';
-  table.innerHTML=`<thead><tr>
+    : logs.filter(l=>l.reps);
+  const sorted=[...filtered].sort((a,b)=>(b.clientTs||0)-(a.clientTs||0));
+  const cont=$('storia-cont');
+  if (!sorted.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
+  const showEx=!exId;
+  const t=el('table'); t.className='h-table';
+  t.innerHTML=`<thead><tr>
     ${showEx?'<th>Esercizio</th>':''}
     <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th>
   </tr></thead><tbody></tbody>`;
-  const tbody=table.querySelector('tbody');
+  const tbody=t.querySelector('tbody');
   sorted.forEach(log=>{
     const ex=exercises.find(e=>e.id===log.exerciseId);
-    const tr=document.createElement('tr');
+    const tr=el('tr');
     tr.innerHTML=`
       ${showEx?`<td style="font-size:12px;color:#888">${ex?.name||'—'}</td>`:''}
       <td>${fmtDate(log.clientTs)}</td>
@@ -1342,13 +1211,15 @@ function renderHistory(exId) {
       <td><button class="del-row" data-id="${log.id}">✕</button></td>`;
     tbody.appendChild(tr);
   });
-  cont.innerHTML=''; cont.appendChild(table);
+  cont.innerHTML=''; cont.appendChild(t);
   cont.querySelectorAll('.del-row').forEach(btn=>{
-    btn.onclick=async()=>{ syncWait(); await deleteDoc(doc(db,'logs',btn.dataset.id)); };
+    btn.addEventListener('click',async()=>{
+      syncWait(); await deleteDoc(doc(db,'logs',btn.dataset.id));
+    });
   });
 }
 
-$('history-select').addEventListener('change',function(){ renderHistory(this.value); });
+$('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
 
 </script>
 </body>
