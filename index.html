@@ -208,8 +208,18 @@
                               display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
     .ex-card-top h3 { font-size: 19px; color: #1c1c1c; }
     .ex-hint { font-size: 12px; margin-top: 4px; line-height: 1.5; }
-    .hint-up   { color: #d0021b; font-weight: bold; }
-    .hint-more { color: #1a7f37; font-weight: bold; }
+    /* hint peso — due righe distinte */
+    .hint-box { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+    .hint-row {
+      display:flex; align-items:center; justify-content:space-between;
+      background:#f9f9f9; border:1px solid #eee; padding:8px 12px; font-size:13px;
+    }
+    .hint-row .hr-label { color:#888; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+    .hint-row .hr-val   { font-weight:bold; color:#1c1c1c; font-size:15px; }
+    .hint-row.hint-aumenta { border-left:3px solid #d0021b; }
+    .hint-row.hint-aumenta .hr-val { color:#d0021b; }
+    .hint-row.hint-ok { border-left:3px solid #1a7f37; }
+    .hint-row.hint-ok .hr-val { color:#1a7f37; }
 
     .sess-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
     .sess-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; }
@@ -663,6 +673,9 @@ const db = getFirestore(app);
 /* ─── Collezione globale profili ─── */
 const colUsers = collection(db,'users');
 
+/* ─── Collezione esercizi — globale, condivisa ─── */
+const colExGlobal = collection(db,'exercises');
+
 /* ─── Stato utente corrente ─── */
 let currentUser = null; // {id, nome}
 let colEx, colLogs, colSch;
@@ -758,8 +771,8 @@ function inizializzaUtente(uid) {
   if (unsubLogs) { unsubLogs(); unsubLogs=null; }
   if (unsubSch)  { unsubSch();  unsubSch=null; }
 
-  // percorsi per utente
-  colEx   = collection(db,`users/${uid}/exercises`);
+  // percorsi per utente (logs e schede) — esercizi sono globali
+  colEx   = colExGlobal;
   colLogs = collection(db,`users/${uid}/logs`);
   colSch  = collection(db,`users/${uid}/schede`);
 
@@ -903,7 +916,7 @@ function renderExercises() {
       syncWait();
       const batch=writeBatch(db);
       logs.filter(l=>l.exerciseId===ex.id).forEach(l=>batch.delete(doc(db,`users/${currentUser.id}/logs`,l.id)));
-      batch.delete(doc(db,`users/${currentUser.id}/exercises`,ex.id));
+      batch.delete(doc(db,'exercises',ex.id));
       await batch.commit();
     };
     ac.append(eb,delBtn); li.append(nm,ac); ul.appendChild(li);
@@ -961,7 +974,7 @@ $('mi-remove').addEventListener('click',()=>{ modalIconImg=null; renderIconPrev(
 $('mi-cancel').addEventListener('click',()=>$('modal-icon').classList.remove('open'));
 $('mi-save').addEventListener('click',async()=>{
   syncWait();
-  await updateDoc(doc(db,`users/${currentUser.id}/exercises`,editIconId),{image:modalIconImg||null});
+  await updateDoc(doc(db,'exercises',editIconId),{image:modalIconImg||null});
   $('modal-icon').classList.remove('open');
 });
 $('modal-icon').addEventListener('click',e=>{ if(e.target===$('modal-icon')) $('modal-icon').classList.remove('open'); });
@@ -1277,19 +1290,44 @@ function getLastLogs(exId) {
 
 function buildHint(exId) {
   const ll=getLastLogs(exId);
-  if (!ll.length) return '<span style="color:#aaa">Prima volta!</span>';
+  // prima volta — nessun hint
+  if (!ll.length) return '';
+
   const lastSess=ll[0].sessionId;
   const sessLogs=ll.filter(l=>l.sessionId===lastSess);
   const repsArr=sessLogs.map(l=>l.reps).filter(Boolean);
   const wArr=sessLogs.map(l=>l.weight).filter(v=>v!=null);
   if (!repsArr.length) return '';
+
   const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
-  // mostra range solo se davvero diversi
-  const repsStr = minR===maxR ? `${minR} reps` : `${minR}-${maxR} reps`;
+  const repsStr=minR===maxR?`${minR} reps`:`${minR}-${maxR} reps`;
   const w=wArr.length?wArr[0]:null;
-  const ws=w!=null?` × ${w} kg`:'';
-  if (minR>=15) return `<span class="hint-up">⬆ Aumenta il peso! Ultima: ${repsStr}${ws}</span>`;
-  return `<span class="hint-more">Ultima: ${repsStr}${ws} → prova ${maxR+1} reps</span>`;
+  const wStr=w!=null?`${w} kg`:'—';
+
+  // riga "ultima volta"
+  const ultimaVal=w!=null?`${repsStr} × ${wStr}`:`${repsStr}`;
+
+  // riga "suggerimento"
+  let sugClass, sugVal;
+  if (minR>=15) {
+    sugClass='hint-aumenta';
+    sugVal=`⬆ Aumenta il peso, torna a 8-10 reps`;
+  } else {
+    sugClass='hint-ok';
+    sugVal=`Prova ${maxR+1} reps${w!=null?' × '+wStr:''}`;
+  }
+
+  return `
+    <div class="hint-box">
+      <div class="hint-row">
+        <span class="hr-label">Ultima volta</span>
+        <span class="hr-val">${ultimaVal}</span>
+      </div>
+      <div class="hint-row ${sugClass}">
+        <span class="hr-label">Suggerimento</span>
+        <span class="hr-val">${sugVal}</span>
+      </div>
+    </div>`;
 }
 
 function renderStep() {
