@@ -1186,11 +1186,13 @@ function renderBlocchi() {
       renderBlocchi();
     });
 
+    inline.append(selTipo, inpDur);
     if (inpSerie) inline.append(inpSerie);
     // mostro reps target e peso suggerito solo se tipo peso è selezionato
     // li aggiungo comunque e li mostro/nascondo con il cambio selTipo
     if (inpRepsTarget) inline.append(inpRepsTarget);
     if (inpPesoSug)    inline.append(inpPesoSug);
+    inline.append(btnPlus);
     // visibilità iniziale basata sul valore default di selTipo
     if (inpRepsTarget) inpRepsTarget.style.display = selTipo.value==='peso'?'block':'none';
     if (inpPesoSug)    inpPesoSug.style.display    = selTipo.value==='peso'?'block':'none';
