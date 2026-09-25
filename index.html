@@ -254,6 +254,10 @@
     .sess-end h3 { font-size: 21px; margin-bottom: 8px; }
     .sess-end p  { font-size: 14px; color: #888; margin-bottom: 24px; }
 
+    /* timer recupero — usa stesso stile timer ma verde */
+    #rec-circle { stroke: #1a7f37 !important; }
+    #rec-text   { fill:   #1a7f37 !important; }
+
     /* ─── GRAFICO ─── */
     .chart-wrap { margin-bottom: 14px; }
     .chart-wrap h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
@@ -298,6 +302,64 @@
     .modal-row { display: flex; gap: 8px; margin-top: 14px; }
     .modal-row button { flex: 1; min-height: 52px; }
 
+    /* ─── PROFILI ─── */
+    #profili-screen {
+      position: fixed; inset: 0; background: #1c1c1c; z-index: 998;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 24px; gap: 0;
+    }
+    #profili-screen.hidden { display: none; }
+    #profili-screen .ps-logo {
+      background: #d0021b; color: #fff; font-size: 38px; font-weight: bold;
+      width: 76px; height: 76px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 10px;
+    }
+    #profili-screen h2 { color: #fff; font-size: 20px; margin-bottom: 4px; }
+    #profili-screen p  { color: #888; font-size: 13px; margin-bottom: 28px; }
+    .profilo-card {
+      width: 100%; max-width: 360px; background: #2a2a2a;
+      border: 1px solid #333; padding: 16px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+    }
+    .profilo-card:active { background: #d0021b; border-color: #d0021b; }
+    .profilo-avatar {
+      width: 46px; height: 46px; background: #d0021b; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: bold; color: #fff; flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .profilo-nome { font-size: 16px; color: #fff; font-weight: bold; flex: 1; }
+    .profilo-del  {
+      background: none; border: none; color: #555; font-size: 20px;
+      cursor: pointer; padding: 4px; min-width: 36px; min-height: 36px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .profilo-del:active { color: #d0021b; }
+    .ps-new-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+    .ps-new-form input {
+      width: 100%; border: 1px solid #444; padding: 14px 12px;
+      font-size: 16px; font-family: Arial, sans-serif; background: #2a2a2a;
+      outline: none; color: #fff; -webkit-appearance: none;
+    }
+    .ps-new-form input::placeholder { color: #666; }
+    .ps-new-form input:focus { border-color: #d0021b; }
+
+    /* badge utente in header */
+    #user-badge {
+      display: none; align-items: center; gap: 6px;
+      background: #2a2a2a; border: 1px solid #444;
+      padding: 4px 10px; cursor: pointer; min-height: 34px;
+    }
+    #user-badge:active { border-color: #d0021b; }
+    #user-badge .ub-avatar {
+      width: 24px; height: 24px; background: #d0021b; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: bold; color: #fff; text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    #user-badge .ub-name { font-size: 12px; color: #ccc; max-width: 80px;
+                           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* ─── LOADING ─── */
     #loading {
       position: fixed; inset: 0; background: #1c1c1c; z-index: 999;
@@ -316,14 +378,32 @@
 </head>
 <body>
 
-<div id="loading">
-  <div class="logo-big">G</div>
-  <p>Connessione in corso…</p>
+<!-- ══ SCHERMATA PROFILI ══ -->
+<div id="profili-screen">
+  <div class="ps-logo">G</div>
+  <h2>GYM TRACKER</h2>
+  <p>Scegli il tuo profilo</p>
+  <div id="profili-lista" style="width:100%;max-width:360px"></div>
+  <div class="ps-new-form">
+    <input type="text" id="inp-nuovo-profilo" placeholder="Nuovo profilo… (es. Marco)"
+           maxlength="30" autocomplete="off" autocorrect="off" spellcheck="false" />
+    <button class="btn btn-red btn-full" id="btn-crea-profilo">+ Crea profilo</button>
+  </div>
+</div>
+
+<!-- ══ LOADING ══ -->
+<div id="loading" style="position:fixed;inset:0;background:#1c1c1c;z-index:997;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div style="background:#d0021b;color:#fff;font-size:38px;font-weight:bold;width:76px;height:76px;display:flex;align-items:center;justify-content:center">G</div>
+  <p style="color:#888;font-size:14px;font-family:Arial,sans-serif">Caricamento dati…</p>
 </div>
 
 <header>
   <div class="logo">G</div>
   <h1>GYM TRACKER</h1>
+  <div id="user-badge">
+    <div class="ub-avatar" id="ub-avatar"></div>
+    <span class="ub-name" id="ub-name"></span>
+  </div>
   <span id="sync">●</span>
 </header>
 
@@ -475,6 +555,25 @@
       <button class="btn btn-red btn-full" id="btn-next-giro">Prossimo giro →</button>
     </div>
 
+    <!-- recupero tra serie -->
+    <div id="recupero-wrap" style="display:none;margin-top:14px">
+      <div class="card" style="text-align:center;padding:24px 16px">
+        <p style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Recupero</p>
+        <div class="timer-ring" style="margin:0 auto 14px">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle class="tr-bg" cx="75" cy="75" r="62"/>
+            <g transform="rotate(-90 75 75)">
+              <circle class="tr-fill" id="rec-circle" cx="75" cy="75" r="62"
+                stroke-dasharray="389.6" stroke-dashoffset="0" style="stroke:#1a7f37"/>
+            </g>
+            <text class="tr-text" id="rec-text" x="75" y="75" style="fill:#1a7f37">0:00</text>
+          </svg>
+        </div>
+        <p id="rec-next-label" style="font-size:13px;color:#555;margin-bottom:16px"></p>
+        <button class="btn btn-ghost btn-full" id="btn-skip-rec">Salta recupero →</button>
+      </div>
+    </div>
+
     <div id="end-wrap" style="display:none;margin-top:14px">
       <div class="card sess-end">
         <div class="end-ico">🏁</div>
@@ -520,8 +619,19 @@
     <div class="vgap">
       <input class="inp" type="text" id="mb-name" placeholder="Nome (es. Circuito A)" maxlength="60" autocomplete="off" />
       <div>
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Tipo</label>
+        <select class="inp" id="mb-tipo">
+          <option value="circuito">Circuito — tutti gli esercizi in sequenza, poi si ripete</option>
+          <option value="serie">Serie — tutte le serie dello stesso esercizio, poi il prossimo</option>
+        </select>
+      </div>
+      <div id="mb-giri-wrap">
         <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Numero di giri</label>
         <input class="inp" type="number" id="mb-giri" min="1" max="20" value="3" inputmode="numeric" />
+      </div>
+      <div id="mb-recupero-wrap" style="display:none">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Recupero tra le serie (secondi)</label>
+        <input class="inp" type="number" id="mb-recupero" min="0" max="600" value="90" inputmode="numeric" />
       </div>
     </div>
     <div class="modal-row">
@@ -548,10 +658,15 @@ const app = initializeApp({
   messagingSenderId: "712965008242",
   appId:             "1:712965008242:web:d9a347472821d80626cbeb"
 });
-const db       = getFirestore(app);
-const colEx    = collection(db,'exercises');
-const colLogs  = collection(db,'logs');
-const colSch   = collection(db,'schede');
+const db = getFirestore(app);
+
+/* ─── Collezione globale profili ─── */
+const colUsers = collection(db,'users');
+
+/* ─── Stato utente corrente ─── */
+let currentUser = null; // {id, nome}
+let colEx, colLogs, colSch;
+let unsubEx=null, unsubLogs=null, unsubSch=null;
 
 /* ─── Cache ─── */
 let exercises=[], logs=[], schede=[];
@@ -569,11 +684,146 @@ const syncWait = () => { sync.textContent='●'; sync.className=''; };
 /* ─── Loading ─── */
 let ready = {ex:false,logs:false,sch:false};
 function checkReady() {
-  if (ready.ex && ready.logs && ready.sch) { $('loading').classList.add('hidden'); syncOk(); }
+  if (ready.ex && ready.logs && ready.sch) {
+    $('loading').style.display='none';
+    syncOk();
+  }
 }
 
 /* ─── uid ─── */
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+
+/* ════════════════════ PROFILI ════════════════════ */
+
+/* lista profili in cache locale */
+let profili = [];
+let unsubProfili = null;
+
+function renderProfili() {
+  const cont = $('profili-lista');
+  cont.innerHTML = '';
+  profili.forEach(p => {
+    const card = el('div'); card.className = 'profilo-card';
+    const av = el('div'); av.className = 'profilo-avatar'; av.textContent = p.nome.charAt(0);
+    const nm = el('span'); nm.className = 'profilo-nome'; nm.textContent = p.nome;
+    const del = el('button'); del.className = 'profilo-del'; del.textContent = '✕';
+    del.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`Eliminare il profilo "${p.nome}" e tutti i suoi dati?`)) return;
+      // elimina subcollection manualmente non è possibile lato client in bulk,
+      // eliminiamo solo il doc user (i dati orfani restano ma non visibili)
+      await deleteDoc(doc(db,'users',p.id));
+      if (localStorage.getItem('gymtracker_uid') === p.id) {
+        localStorage.removeItem('gymtracker_uid');
+      }
+    });
+    card.addEventListener('click', () => selezionaProfilo(p));
+    card.append(av, nm, del);
+    cont.appendChild(card);
+  });
+}
+
+async function creaProfilo(nome) {
+  nome = nome.trim();
+  if (!nome) return;
+  if (profili.some(p => p.nome.toLowerCase() === nome.toLowerCase())) {
+    alert('Profilo già esistente.'); return;
+  }
+  syncWait();
+  const ref = await addDoc(colUsers, { nome, createdAt: serverTimestamp() });
+  selezionaProfilo({ id: ref.id, nome });
+}
+
+function selezionaProfilo(p) {
+  currentUser = p;
+  localStorage.setItem('gymtracker_uid',  p.id);
+  localStorage.setItem('gymtracker_nome', p.nome);
+
+  // aggiorna badge header
+  $('ub-avatar').textContent = p.nome.charAt(0).toUpperCase();
+  $('ub-name').textContent   = p.nome;
+  $('user-badge').style.display = 'flex';
+
+  // nasconde schermata profili, mostra loading
+  $('profili-screen').classList.add('hidden');
+  $('loading').style.display = 'flex';
+
+  // ricollega le collezioni all'utente
+  inizializzaUtente(p.id);
+}
+
+function inizializzaUtente(uid) {
+  // stacca listener precedenti
+  if (unsubEx)   { unsubEx();   unsubEx=null; }
+  if (unsubLogs) { unsubLogs(); unsubLogs=null; }
+  if (unsubSch)  { unsubSch();  unsubSch=null; }
+
+  // percorsi per utente
+  colEx   = collection(db,`users/${uid}/exercises`);
+  colLogs = collection(db,`users/${uid}/logs`);
+  colSch  = collection(db,`users/${uid}/schede`);
+
+  // reset cache e ready
+  exercises=[]; logs=[]; schede=[];
+  ready={ex:false,logs:false,sch:false};
+
+  unsubEx = onSnapshot(query(colEx, orderBy('createdAt')), s=>{
+    exercises=s.docs.map(d=>({id:d.id,...d.data()}));
+    ready.ex=true; checkReady(); syncOk();
+    renderExercises(); renderSchedeList(); renderAlStart(); renderStoriaSelect();
+  }, syncErr);
+
+  unsubLogs = onSnapshot(query(colLogs, orderBy('clientTs')), s=>{
+    logs=s.docs.map(d=>({id:d.id,...d.data()}));
+    ready.logs=true; checkReady(); syncOk();
+    renderStoria($('storia-sel').value||'');
+  }, syncErr);
+
+  unsubSch = onSnapshot(query(colSch, orderBy('createdAt')), s=>{
+    schede=s.docs.map(d=>({id:d.id,...d.data()}));
+    ready.sch=true; checkReady(); syncOk();
+    renderSchedeList(); renderAlStart();
+  }, syncErr);
+}
+
+/* ── listener profili globali ── */
+unsubProfili = onSnapshot(query(colUsers, orderBy('createdAt')), snap => {
+  profili = snap.docs.map(d => ({id:d.id,...d.data()}));
+  renderProfili();
+  // al primo carico controlla se c'è già un profilo in localStorage
+  const savedId   = localStorage.getItem('gymtracker_uid');
+  const savedNome = localStorage.getItem('gymtracker_nome');
+  if (savedId && savedNome && !currentUser) {
+    // verifica che esista ancora su Firestore
+    if (profili.find(p => p.id === savedId)) {
+      selezionaProfilo({ id: savedId, nome: savedNome });
+    } else {
+      localStorage.removeItem('gymtracker_uid');
+      localStorage.removeItem('gymtracker_nome');
+    }
+  }
+}, syncErr);
+
+/* ── form nuovo profilo ── */
+$('btn-crea-profilo').addEventListener('click', () => {
+  creaProfilo($('inp-nuovo-profilo').value);
+  $('inp-nuovo-profilo').value = '';
+});
+$('inp-nuovo-profilo').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { creaProfilo($('inp-nuovo-profilo').value); $('inp-nuovo-profilo').value=''; }
+});
+
+/* ── badge header → torna ai profili ── */
+$('user-badge').addEventListener('click', () => {
+  if (!confirm(`Cambiare profilo? (profilo corrente: ${currentUser?.nome})`)) return;
+  currentUser = null;
+  $('user-badge').style.display = 'none';
+  $('profili-screen').classList.remove('hidden');
+  // stacca listener dati
+  if (unsubEx)   { unsubEx();   unsubEx=null; }
+  if (unsubLogs) { unsubLogs(); unsubLogs=null; }
+  if (unsubSch)  { unsubSch();  unsubSch=null; }
+});
 
 /* ─── Timestamp ─── */
 function tsMs(ts) {
@@ -632,25 +882,6 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
   });
 });
 
-/* ════════════════════ FIRESTORE ════════════════════ */
-onSnapshot(query(colEx,  orderBy('createdAt')), s=>{
-  exercises=s.docs.map(d=>({id:d.id,...d.data()}));
-  ready.ex=true; checkReady(); syncOk();
-  renderExercises(); renderSchedeList(); renderAlStart(); renderStoriaSelect();
-}, syncErr);
-
-onSnapshot(query(colLogs,orderBy('clientTs')), s=>{
-  logs=s.docs.map(d=>({id:d.id,...d.data()}));
-  ready.logs=true; checkReady(); syncOk();
-  renderStoria($('storia-sel').value||'');
-}, syncErr);
-
-onSnapshot(query(colSch, orderBy('createdAt')), s=>{
-  schede=s.docs.map(d=>({id:d.id,...d.data()}));
-  ready.sch=true; checkReady(); syncOk();
-  renderSchedeList(); renderAlStart();
-}, syncErr);
-
 /* ════════════════════ ESERCIZI ════════════════════ */
 let pendingImg=null;
 
@@ -664,18 +895,18 @@ function renderExercises() {
     const ac=el('div');  ac.className='ex-actions';
     const eb=el('button'); eb.textContent='🖼'; eb.className='btn-sm';
     eb.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px';
-    const db=el('button'); db.textContent='Elimina'; db.className='btn-sm';
-    db.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px;color:#888';
+    const delBtn=el('button'); delBtn.textContent='Elimina'; delBtn.className='btn-sm';
+    delBtn.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px;color:#888';
     eb.onclick=()=>openIconModal(ex.id);
-    db.onclick=async()=>{
+    delBtn.onclick=async()=>{
       if (!confirm(`Eliminare "${ex.name}"?`)) return;
       syncWait();
-      const b=writeBatch(db);
-      logs.filter(l=>l.exerciseId===ex.id).forEach(l=>b.delete(doc(db,'logs',l.id)));
-      b.delete(doc(db,'exercises',ex.id));
-      await b.commit();
+      const batch=writeBatch(db);
+      logs.filter(l=>l.exerciseId===ex.id).forEach(l=>batch.delete(doc(db,`users/${currentUser.id}/logs`,l.id)));
+      batch.delete(doc(db,`users/${currentUser.id}/exercises`,ex.id));
+      await batch.commit();
     };
-    ac.append(eb,db); li.append(nm,ac); ul.appendChild(li);
+    ac.append(eb,delBtn); li.append(nm,ac); ul.appendChild(li);
   });
 }
 
@@ -691,6 +922,7 @@ async function doAddEx() {
   const name=$('inp-ex-name').value.trim();
   if (!name) return;
   if (exercises.some(e=>e.name.toLowerCase()===name.toLowerCase())) { alert('Già presente.'); return; }
+  if (!currentUser) return;
   syncWait();
   await addDoc(colEx,{name,image:pendingImg||null,createdAt:serverTimestamp()});
   $('inp-ex-name').value=''; pendingImg=null;
@@ -729,7 +961,7 @@ $('mi-remove').addEventListener('click',()=>{ modalIconImg=null; renderIconPrev(
 $('mi-cancel').addEventListener('click',()=>$('modal-icon').classList.remove('open'));
 $('mi-save').addEventListener('click',async()=>{
   syncWait();
-  await updateDoc(doc(db,'exercises',editIconId),{image:modalIconImg||null});
+  await updateDoc(doc(db,`users/${currentUser.id}/exercises`,editIconId),{image:modalIconImg||null});
   $('modal-icon').classList.remove('open');
 });
 $('modal-icon').addEventListener('click',e=>{ if(e.target===$('modal-icon')) $('modal-icon').classList.remove('open'); });
@@ -755,7 +987,7 @@ function renderSchedeList() {
     bMod.addEventListener('click',()=>openEditor(s.id));
     bDel.addEventListener('click',async()=>{
       if (!confirm(`Eliminare "${s.name}"?`)) return;
-      syncWait(); await deleteDoc(doc(db,'schede',s.id));
+      syncWait(); await deleteDoc(doc(db,`users/${currentUser.id}/schede`,s.id));
     });
     btns.append(bMod,bDel);
     row.append(nm,sub,btns);
@@ -773,10 +1005,12 @@ function openEditor(schedaId) {
     $('editor-title').textContent='Modifica scheda';
     editBlocchi=(s.blocchi||[]).map(b=>({
       lid:uid(), name:b.name, giri:b.giri,
+      tipo:b.tipo||'circuito', recupero:b.recupero||null,
       esercizi:(b.esercizi||[]).map(e=>({
         lid:uid(), exId:e.exId,
         tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
-        durata:e.durata||null
+        durata:e.durata||null,
+        serie:e.serie||null
       }))
     }));
   } else {
@@ -805,16 +1039,19 @@ async function doSalva() {
     name,
     blocchi: editBlocchi.map(b=>({
       name:b.name, giri:b.giri,
+      tipo:b.tipo||'circuito',
+      recupero:b.recupero||null,
       esercizi:b.esercizi.map(e=>({
         exId:e.exId,
         tipo:e.tipo||'solo',
-        durata:e.durata||null
+        durata:e.durata||null,
+        serie:e.serie||null
       }))
     }))
   };
   try {
     if (editSchedaId) {
-      await updateDoc(doc(db,'schede',editSchedaId),data);
+      await updateDoc(doc(db,`users/${currentUser.id}/schede`,editSchedaId),data);
     } else {
       data.createdAt=serverTimestamp();
       await addDoc(colSch,data);
@@ -836,7 +1073,12 @@ function renderBlocchi() {
     // header
     const hdr=el('div'); hdr.className='blocco-header';
     const hnm=el('span'); hnm.className='bh-name'; hnm.textContent=b.name;
-    const hgiri=el('span'); hgiri.className='bh-giri'; hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'}`;
+    const hgiri=el('span'); hgiri.className='bh-giri';
+    if (b.tipo==='serie') {
+      hgiri.textContent=`Serie · recupero ${b.recupero||90}s`;
+    } else {
+      hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'}`;
+    }
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
     hdr.append(hnm,hgiri,hdel);
@@ -853,7 +1095,11 @@ function renderBlocchi() {
       li.appendChild(makeIcon(ex,30));
       const nm=el('span'); nm.className='bei-name'; nm.textContent=ex.name;
       const tag=el('span'); tag.className='bei-tag';
-      tag.textContent = item.tipo==='peso'?'Peso': item.tipo==='tempo'?`⏱ ${fmtSec(item.durata||60)}`:'Solo';
+      tag.textContent = item.tipo==='peso'
+        ? (b.tipo==='serie' ? `${item.serie||3}×Peso` : 'Peso')
+        : item.tipo==='tempo'
+          ? `⏱ ${fmtSec(item.durata||60)}`
+          : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
       const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
       del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
       li.append(nm,tag,del); ul.appendChild(li);
@@ -887,16 +1133,28 @@ function renderBlocchi() {
       inpDur.style.display=selTipo.value==='tempo'?'block':'none';
     });
 
+    // campo numero serie (solo per blocchi tipo serie)
+    let inpSerie=null;
+    if (b.tipo==='serie') {
+      inpSerie=el('input');
+      inpSerie.type='number'; inpSerie.min='1'; inpSerie.max='20'; inpSerie.value='3';
+      inpSerie.placeholder='serie'; inpSerie.inputMode='numeric';
+      inpSerie.style.cssText='border:1px solid #ccc;font-size:15px;font-family:Arial,sans-serif;background:#fff;padding:12px 8px;width:70px;outline:none;-webkit-appearance:none;';
+      inpSerie.title='Numero di serie';
+    }
+
     const btnPlus=el('button'); btnPlus.type='button'; btnPlus.className='btn btn-dark btn-sm';
     btnPlus.textContent='+'; btnPlus.style.minHeight='52px'; btnPlus.style.padding='0 18px';
     btnPlus.addEventListener('click',()=>{
       if (!selEx.value) { alert('Scegli un esercizio.'); return; }
       const tipo=selTipo.value;
       const durata=tipo==='tempo'?(parseInt(inpDur.value)||60):null;
-      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata});
+      const serie=b.tipo==='serie'?(parseInt(inpSerie?.value)||3):null;
+      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata, serie});
       renderBlocchi();
     });
 
+    if (inpSerie) inline.append(inpSerie);
     inline.append(selTipo, inpDur, btnPlus);
     addRow.append(selEx, inline);
     body.append(ul, addRow);
@@ -907,15 +1165,26 @@ function renderBlocchi() {
 
 /* ── Modal nuovo blocco ── */
 $('btn-add-blocco').addEventListener('click',()=>{
-  $('mb-name').value=''; $('mb-giri').value=3; $('modal-blocco').classList.add('open');
+  $('mb-name').value=''; $('mb-giri').value=3;
+  $('mb-tipo').value='circuito'; $('mb-recupero').value=90;
+  $('mb-giri-wrap').style.display='block';
+  $('mb-recupero-wrap').style.display='none';
+  $('modal-blocco').classList.add('open');
   setTimeout(()=>$('mb-name').focus(),100);
+});
+$('mb-tipo').addEventListener('change',()=>{
+  const isSerie=$('mb-tipo').value==='serie';
+  $('mb-giri-wrap').style.display=isSerie?'none':'block';
+  $('mb-recupero-wrap').style.display=isSerie?'block':'none';
 });
 $('mb-cancel').addEventListener('click',()=>$('modal-blocco').classList.remove('open'));
 $('mb-save').addEventListener('click',()=>{
   const name=$('mb-name').value.trim();
-  const giri=parseInt($('mb-giri').value)||3;
   if (!name) { alert('Inserisci un nome.'); return; }
-  editBlocchi.push({lid:uid(),name,giri,esercizi:[]});
+  const tipo=$('mb-tipo').value;
+  const giri=tipo==='serie'?1:(parseInt($('mb-giri').value)||3);
+  const recupero=tipo==='serie'?(parseInt($('mb-recupero').value)||90):null;
+  editBlocchi.push({lid:uid(),name,giri,tipo,recupero,esercizi:[]});
   renderBlocchi();
   $('modal-blocco').classList.remove('open');
 });
@@ -951,15 +1220,46 @@ $('btn-inizia').addEventListener('click',()=>{
   // costruisce lista piatta di step
   const steps=[];
   (s.blocchi||[]).forEach((b,bi)=>{
-    for (let g=1;g<=b.giri;g++) {
+    const tipoBlocco=b.tipo||'circuito';
+    if (tipoBlocco==='serie') {
+      // ogni esercizio fa tutte le sue serie consecutive con recupero in mezzo
       (b.esercizi||[]).forEach((e,ei)=>{
-        steps.push({
-          bi, bName:b.name, giro:g, giriTot:b.giri,
-          ei, exId:e.exId,
-          tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
-          durata:e.durata||null
-        });
+        const nSerie=e.serie||3; // default 3 serie se non specificato
+        for (let g=1;g<=nSerie;g++) {
+          steps.push({
+            bi, bName:b.name, tipoBlocco:'serie',
+            giro:g, giriTot:nSerie,
+            ei, exId:e.exId,
+            tipo:e.tipo||(e.sovraccarico?'peso':'solo'),
+            durata:e.durata||null,
+            isRecupero:false
+          });
+          // recupero dopo ogni serie tranne l'ultima
+          if (g<nSerie) {
+            steps.push({
+              bi, bName:b.name, tipoBlocco:'serie',
+              giro:g, giriTot:nSerie,
+              ei, exId:e.exId,
+              tipo:'recupero', durata:b.recupero||90,
+              isRecupero:true
+            });
+          }
+        }
       });
+    } else {
+      // circuito: tutti gli esercizi per ogni giro
+      for (let g=1;g<=b.giri;g++) {
+        (b.esercizi||[]).forEach((e,ei)=>{
+          steps.push({
+            bi, bName:b.name, tipoBlocco:'circuito',
+            giro:g, giriTot:b.giri,
+            ei, exId:e.exId,
+            tipo:e.tipo||(e.sovraccarico?'peso':'solo'),
+            durata:e.durata||null,
+            isRecupero:false
+          });
+        });
+      }
     }
   });
   if (!steps.length) { alert('Nessun esercizio nella scheda.'); return; }
@@ -997,29 +1297,49 @@ function renderStep() {
   const {steps,cur}=sess;
   const step=steps[cur];
 
-  // progress
-  const pct=Math.round((cur/steps.length)*100);
+  // progress (escludi step recupero dal conteggio visivo)
+  const realSteps=steps.filter(s=>!s.isRecupero).length;
+  const realDone =steps.slice(0,cur).filter(s=>!s.isRecupero).length;
+  const pct=Math.round((realDone/realSteps)*100);
   $('prog-fill').style.width=pct+'%';
-  $('sh-prog').textContent=`${cur+1}/${steps.length}`;
-  $('sh-giro').textContent=`Giro ${step.giro}/${step.giriTot}`;
-  $('sh-blocco').textContent=step.bName;
+  $('sh-prog').textContent=`${realDone+1}/${realSteps}`;
 
-  // nascondi riepilogo/fine
+  // nascondi tutto
   $('giro-wrap').style.display='none';
   $('end-wrap').style.display='none';
+  $('recupero-wrap').style.display='none';
+  $('ex-card').style.display='none';
+  $('btn-skip').style.display='none';
+  $('btn-next').style.display='none';
+
+  // step di recupero
+  if (step.isRecupero) {
+    const ex=exercises.find(e=>e.id===step.exId);
+    $('rec-next-label').textContent=`Prossima: ${ex?.name||''} — Serie ${step.giro+1}/${step.giriTot}`;
+    $('recupero-wrap').style.display='block';
+    initRecupero(step.durata||90);
+    return;
+  }
+
+  // step normale
   $('ex-card').style.display='block';
   $('btn-skip').style.display='';
   $('btn-next').style.display='';
 
-  const ex=exercises.find(e=>e.id===step.exId);
+  // header
+  if (step.tipoBlocco==='serie') {
+    $('sh-giro').textContent=`Serie ${step.giro}/${step.giriTot}`;
+  } else {
+    $('sh-giro').textContent=`Giro ${step.giro}/${step.giriTot}`;
+  }
+  $('sh-blocco').textContent=step.bName;
 
-  // icona
+  const ex=exercises.find(e=>e.id===step.exId);
   const ic=$('ect-icon'); ic.innerHTML='';
   ic.appendChild(makeIcon(ex,60));
   $('ect-name').textContent=ex?.name||'—';
   $('ect-hint').innerHTML=step.tipo==='peso'?buildHint(step.exId):'';
 
-  // form
   $('form-peso').style.display  = step.tipo==='peso'  ? 'block':'none';
   $('form-solo').style.display  = step.tipo==='solo'  ? 'block':'none';
   $('form-timer').style.display = step.tipo==='tempo' ? 'block':'none';
@@ -1079,12 +1399,19 @@ function doSkip() {
 }
 
 function advance() {
-  stopTimer();
+  stopTimer(); stopRecupero();
   const {steps,cur}=sess;
   const prev=steps[cur];
   sess.cur++;
   if (sess.cur>=steps.length) { showEnd(); return; }
   const next=steps[sess.cur];
+
+  // per i blocchi serie non c'è riepilogo giro — si va dritti al prossimo step
+  if (prev.tipoBlocco==='serie' || prev.isRecupero) {
+    renderStep(); return;
+  }
+
+  // circuito: riepilogo al cambio giro o blocco
   const giroFinito=(next.giro!==prev.giro||next.bi!==prev.bi);
   if (giroFinito) showGiroRiepilogo(prev);
   else renderStep();
@@ -1132,7 +1459,7 @@ $('btn-next-giro').addEventListener('click',()=>{
 
 /* ── fine sessione ── */
 function showEnd() {
-  stopTimer();
+  stopTimer(); stopRecupero();
   $('prog-fill').style.width='100%';
   $('ex-card').style.display='none';
   $('giro-wrap').style.display='none';
@@ -1149,6 +1476,48 @@ $('btn-fine').addEventListener('click',()=>{
   $('al-start').style.display='block';
   $('prog-fill').style.width='0';
 });
+
+/* ════════════════════ TIMER RECUPERO ════════════════════ */
+const CIRC_REC=389.6;
+let recTotal=0, recLeft=0, recInterval=null;
+
+function initRecupero(sec) {
+  stopRecupero();
+  recTotal=sec; recLeft=sec;
+  updateRecUI();
+}
+function updateRecUI() {
+  const pct=recLeft/recTotal;
+  const circle=$('rec-circle'), text=$('rec-text');
+  if (!circle) return;
+  circle.style.strokeDashoffset=CIRC_REC*(1-pct);
+  text.textContent=fmtTimer(recLeft);
+  if (recLeft<=0) { text.textContent='Via!'; }
+}
+function startRecupero() {
+  if (recInterval) return;
+  recInterval=setInterval(()=>{
+    recLeft--;
+    updateRecUI();
+    if (recLeft<=0) {
+      stopRecupero();
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      // avanza automaticamente dopo 1 secondo
+      setTimeout(()=>{
+        if ($('recupero-wrap').style.display!=='none') advance();
+      },1000);
+    }
+  },1000);
+}
+function stopRecupero() { clearInterval(recInterval); recInterval=null; }
+
+// avvia il recupero automaticamente quando appare la schermata
+const recObserver=new MutationObserver(()=>{
+  if ($('recupero-wrap').style.display!=='none') startRecupero();
+});
+recObserver.observe($('recupero-wrap'),{attributes:true,attributeFilter:['style']});
+
+$('btn-skip-rec').addEventListener('click',()=>{ stopRecupero(); advance(); });
 
 /* ════════════════════ TIMER ════════════════════ */
 const CIRC=389.6; // 2π × 62
@@ -1248,7 +1617,7 @@ function renderStoria(exId) {
   cont.appendChild(t);
   cont.querySelectorAll('.del-row').forEach(btn=>{
     btn.addEventListener('click',async()=>{
-      syncWait(); await deleteDoc(doc(db,'logs',btn.dataset.id));
+      syncWait(); await deleteDoc(doc(db,`users/${currentUser.id}/logs`,btn.dataset.id));
     });
   });
 }
