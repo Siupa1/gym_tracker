@@ -1023,7 +1023,9 @@ function openEditor(schedaId) {
         lid:uid(), exId:e.exId,
         tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
         durata:e.durata||null,
-        serie:e.serie||null
+        serie:e.serie||null,
+        repsTarget:e.repsTarget||null,
+        pesoSuggerito:e.pesoSuggerito||null
       }))
     }));
   } else {
@@ -1058,7 +1060,9 @@ async function doSalva() {
         exId:e.exId,
         tipo:e.tipo||'solo',
         durata:e.durata||null,
-        serie:e.serie||null
+        serie:e.serie||null,
+        repsTarget:e.repsTarget||null,
+        pesoSuggerito:e.pesoSuggerito||null
       }))
     }))
   };
@@ -1109,7 +1113,9 @@ function renderBlocchi() {
       const nm=el('span'); nm.className='bei-name'; nm.textContent=ex.name;
       const tag=el('span'); tag.className='bei-tag';
       tag.textContent = item.tipo==='peso'
-        ? (b.tipo==='serie' ? `${item.serie||3}×Peso` : 'Peso')
+        ? (b.tipo==='serie'
+            ? `${item.serie||3}×${item.repsTarget||'?'} reps${item.pesoSuggerito!=null?' · '+item.pesoSuggerito+'kg':''}`
+            : 'Peso')
         : item.tipo==='tempo'
           ? `⏱ ${fmtSec(item.durata||60)}`
           : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
@@ -1142,9 +1148,20 @@ function renderBlocchi() {
     inpDur.placeholder='sec'; inpDur.className='inp-durata';
     inpDur.inputMode='numeric';
 
-    selTipo.addEventListener('change',()=>{
-      inpDur.style.display=selTipo.value==='tempo'?'block':'none';
-    });
+    let inpRepsTarget=null, inpPesoSug=null;
+    if (b.tipo==='serie') {
+      inpRepsTarget=el('input');
+      inpRepsTarget.type='number'; inpRepsTarget.min='1'; inpRepsTarget.max='999';
+      inpRepsTarget.placeholder='reps'; inpRepsTarget.inputMode='numeric';
+      inpRepsTarget.title='Ripetizioni target';
+      inpRepsTarget.style.cssText='border:1px solid #ccc;font-size:15px;font-family:Arial,sans-serif;background:#fff;padding:12px 8px;width:70px;outline:none;-webkit-appearance:none;';
+
+      inpPesoSug=el('input');
+      inpPesoSug.type='number'; inpPesoSug.min='0'; inpPesoSug.max='9999'; inpPesoSug.step='0.5';
+      inpPesoSug.placeholder='kg'; inpPesoSug.inputMode='decimal';
+      inpPesoSug.title='Peso suggerito (opzionale)';
+      inpPesoSug.style.cssText='border:1px solid #ccc;font-size:15px;font-family:Arial,sans-serif;background:#fff;padding:12px 8px;width:70px;outline:none;-webkit-appearance:none;';
+    }
 
     // campo numero serie (solo per blocchi tipo serie)
     let inpSerie=null;
@@ -1163,12 +1180,26 @@ function renderBlocchi() {
       const tipo=selTipo.value;
       const durata=tipo==='tempo'?(parseInt(inpDur.value)||60):null;
       const serie=b.tipo==='serie'?(parseInt(inpSerie?.value)||3):null;
-      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata, serie});
+      const repsTarget=b.tipo==='serie'&&tipo==='peso'?(parseInt(inpRepsTarget?.value)||null):null;
+      const pesoSuggerito=b.tipo==='serie'&&tipo==='peso'?(parseFloat(inpPesoSug?.value)||null):null;
+      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata, serie, repsTarget, pesoSuggerito});
       renderBlocchi();
     });
 
     if (inpSerie) inline.append(inpSerie);
-    inline.append(selTipo, inpDur, btnPlus);
+    // mostro reps target e peso suggerito solo se tipo peso è selezionato
+    // li aggiungo comunque e li mostro/nascondo con il cambio selTipo
+    if (inpRepsTarget) inline.append(inpRepsTarget);
+    if (inpPesoSug)    inline.append(inpPesoSug);
+    // visibilità iniziale basata sul valore default di selTipo
+    if (inpRepsTarget) inpRepsTarget.style.display = selTipo.value==='peso'?'block':'none';
+    if (inpPesoSug)    inpPesoSug.style.display    = selTipo.value==='peso'?'block':'none';
+    // aggiorna visibilità al cambio tipo
+    selTipo.addEventListener('change',()=>{
+      inpDur.style.display = selTipo.value==='tempo'?'block':'none';
+      if (inpRepsTarget) inpRepsTarget.style.display = selTipo.value==='peso'?'block':'none';
+      if (inpPesoSug)    inpPesoSug.style.display    = selTipo.value==='peso'?'block':'none';
+    });
     addRow.append(selEx, inline);
     body.append(ul, addRow);
     wrap.append(hdr, body);
@@ -1245,6 +1276,8 @@ $('btn-inizia').addEventListener('click',()=>{
             ei, exId:e.exId,
             tipo:e.tipo||(e.sovraccarico?'peso':'solo'),
             durata:e.durata||null,
+            repsTarget:e.repsTarget||null,
+            pesoSuggerito:e.pesoSuggerito||null,
             isRecupero:false
           });
           // recupero dopo ogni serie tranne l'ultima
@@ -1330,6 +1363,51 @@ function buildHint(exId) {
     </div>`;
 }
 
+/* hint per blocchi Serie — nessuna progressione, solo target e ultimo usato */
+function buildHintSerie(exId, repsTarget, pesoSuggerito) {
+  const ll = getLastLogs(exId);
+
+  // target reps (sempre visibile se impostato)
+  const targetRow = repsTarget
+    ? `<div class="hint-row">
+         <span class="hr-label">Target</span>
+         <span class="hr-val">${repsTarget} reps</span>
+       </div>`
+    : '';
+
+  if (!ll.length) {
+    // prima volta — mostra target + peso suggerito se disponibile
+    const pesoRow = pesoSuggerito!=null
+      ? `<div class="hint-row hint-ok">
+           <span class="hr-label">Peso suggerito</span>
+           <span class="hr-val">${pesoSuggerito} kg</span>
+         </div>`
+      : '';
+    if (!targetRow && !pesoRow) return '';
+    return `<div class="hint-box">${targetRow}${pesoRow}</div>`;
+  }
+
+  // ha storico — mostra solo ultima volta, nessun suggerimento progressione
+  const lastSess = ll[0].sessionId;
+  const sessLogs = ll.filter(l=>l.sessionId===lastSess);
+  const repsArr  = sessLogs.map(l=>l.reps).filter(Boolean);
+  const wArr     = sessLogs.map(l=>l.weight).filter(v=>v!=null);
+  if (!repsArr.length) return `<div class="hint-box">${targetRow}</div>`;
+
+  const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
+  const repsStr=minR===maxR?`${minR} reps`:`${minR}-${maxR} reps`;
+  const w=wArr.length?wArr[0]:null;
+  const ultimaVal=w!=null?`${repsStr} × ${w} kg`:repsStr;
+
+  return `<div class="hint-box">
+    ${targetRow}
+    <div class="hint-row">
+      <span class="hr-label">Ultima volta</span>
+      <span class="hr-val">${ultimaVal}</span>
+    </div>
+  </div>`;
+}
+
 function renderStep() {
   if (!sess) return;
   const {steps,cur}=sess;
@@ -1376,7 +1454,13 @@ function renderStep() {
   const ic=$('ect-icon'); ic.innerHTML='';
   ic.appendChild(makeIcon(ex,60));
   $('ect-name').textContent=ex?.name||'—';
-  $('ect-hint').innerHTML=step.tipo==='peso'?buildHint(step.exId):'';
+  if (step.tipo==='peso') {
+    $('ect-hint').innerHTML = step.tipoBlocco==='serie'
+      ? buildHintSerie(step.exId, step.repsTarget, step.pesoSuggerito)
+      : buildHint(step.exId);
+  } else {
+    $('ect-hint').innerHTML = '';
+  }
 
   $('form-peso').style.display  = step.tipo==='peso'  ? 'block':'none';
   $('form-solo').style.display  = step.tipo==='solo'  ? 'block':'none';
