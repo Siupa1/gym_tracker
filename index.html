@@ -211,6 +211,21 @@
     .progress-bar-wrap { background: #333; height: 4px; margin: -14px -14px 14px; }
     .progress-bar-fill { background: #d0021b; height: 4px; transition: width .4s; }
 
+    #print-header { display: none; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #tab-storia, #tab-storia * { visibility: visible; }
+      #tab-storia {
+        position: absolute; left: 0; top: 0; width: 100%; padding: 0; display: block;
+      }
+      #storia-filtro-card, #btn-pdf-storico { display: none !important; }
+      #print-header { display: block; }
+      .card { border: none; box-shadow: none; padding: 0; }
+      .del-row { display: none !important; }
+      .h-table th:last-child, .h-table td:last-child { display: none; }
+    }
+
     .ex-card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
     .ex-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
     .ex-card-top .ect-icon { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
@@ -617,12 +632,19 @@
 
 <!-- ══ TAB STORICO ══ -->
 <div class="page" id="tab-storia">
-  <div class="card">
+  <div class="card" id="storia-filtro-card">
     <h2>Filtra</h2>
     <select class="inp" id="storia-sel"></select>
   </div>
   <div class="card">
-    <h2>Log</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0">Log</h2>
+      <button class="btn btn-ghost btn-sm" id="btn-pdf-storico">📄 Esporta PDF</button>
+    </div>
+    <div id="print-header">
+      <h2 id="ph-title" style="margin-bottom:2px"></h2>
+      <p id="ph-sub" style="font-size:12px;color:#666;margin-bottom:14px"></p>
+    </div>
     <div id="storia-cont"><p class="empty-msg">Nessun log ancora.</p></div>
   </div>
 </div>
@@ -2079,6 +2101,15 @@ function showTooltip(e, text) {
 }
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
+
+/* ── esporta storico in PDF (via stampa del browser) ── */
+$('btn-pdf-storico').addEventListener('click', () => {
+  const exId=$('storia-sel').value||'';
+  const exName=exId ? (exercises.find(e=>e.id===exId)?.name || '') : 'Tutti gli esercizi';
+  $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome||''}`;
+  $('ph-sub').textContent = `${exName} · esportato il ${new Date().toLocaleDateString('it-IT')}`;
+  window.print();
+});
 
 </script>
 </body>
