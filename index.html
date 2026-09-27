@@ -645,7 +645,7 @@
 <!-- ══ MODAL NUOVO BLOCCO ══ -->
 <div class="modal-bg" id="modal-blocco">
   <div class="modal-box">
-    <h3>Nuovo blocco</h3>
+    <h3 id="mb-title">Nuovo blocco</h3>
     <div class="vgap">
       <input class="inp" type="text" id="mb-name" placeholder="Nome (es. Circuito A)" maxlength="60" autocomplete="off" />
       <div>
@@ -1041,7 +1041,7 @@ $('mi-save').addEventListener('click',async()=>{
 $('modal-icon').addEventListener('click',e=>{ if(e.target===$('modal-icon')) $('modal-icon').classList.remove('open'); });
 
 /* ════════════════════ SCHEDE ════════════════════ */
-let editSchedaId=null, editBlocchi=[];
+let editSchedaId=null, editBlocchi=[], editingEx=null;
 
 function renderSchedeList() {
   const cont=$('schede-list'); cont.innerHTML='';
@@ -1073,6 +1073,7 @@ $('btn-nuova-scheda').addEventListener('click',()=>openEditor(null));
 
 function openEditor(schedaId) {
   editSchedaId=schedaId;
+  editingEx=null;
   if (schedaId) {
     const s=schede.find(x=>x.id===schedaId);
     $('inp-scheda-name').value=s.name;
@@ -1160,7 +1161,10 @@ function renderBlocchi() {
     }
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
-    hdr.append(hnm,hgiri,hdel);
+    const hedit=el('button'); hedit.type='button'; hedit.className='bh-del'; hedit.textContent='✏';
+    hedit.title='Modifica blocco';
+    hedit.addEventListener('click',()=>openBloccoModal(bi));
+    hdr.append(hnm,hgiri,hedit,hdel);
 
     // body
     const body=el('div'); body.className='blocco-body';
@@ -1183,10 +1187,14 @@ function renderBlocchi() {
           : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
       const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
       del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
-      li.append(nm,tag,del); ul.appendChild(li);
+      const editIt=el('button'); editIt.type='button'; editIt.className='bei-del'; editIt.textContent='✏';
+      editIt.title='Modifica esercizio';
+      editIt.addEventListener('click',()=>{ editingEx={bi,ei}; renderBlocchi(); });
+      li.append(nm,tag,editIt,del); ul.appendChild(li);
     });
 
-    // riga aggiungi esercizio
+    // riga aggiungi/modifica esercizio
+    const editingThis = (editingEx && editingEx.bi===bi && b.esercizi[editingEx.ei]) ? editingEx.ei : null;
     const addRow=el('div'); addRow.className='add-ex-row';
 
     // select esercizio
@@ -1236,7 +1244,7 @@ function renderBlocchi() {
     }
 
     const btnPlus=el('button'); btnPlus.type='button'; btnPlus.className='btn btn-dark btn-sm';
-    btnPlus.textContent='+'; btnPlus.style.minHeight='52px'; btnPlus.style.padding='0 18px';
+    btnPlus.textContent=editingThis!=null?'✓':'+'; btnPlus.style.minHeight='52px'; btnPlus.style.padding='0 18px';
     btnPlus.addEventListener('click',()=>{
       if (!selEx.value) { alert('Scegli un esercizio.'); return; }
       const tipo=selTipo.value;
@@ -1244,7 +1252,13 @@ function renderBlocchi() {
       const serie=b.tipo==='serie'?(parseInt(inpSerie?.value)||3):null;
       const repsTarget=b.tipo==='serie'&&tipo==='peso'?(parseInt(inpRepsTarget?.value)||null):null;
       const pesoSuggerito=b.tipo==='serie'&&tipo==='peso'?(parseFloat(inpPesoSug?.value)||null):null;
-      b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata, serie, repsTarget, pesoSuggerito});
+      if (editingThis!=null) {
+        const old=b.esercizi[editingThis];
+        b.esercizi[editingThis]={lid:old.lid, exId:selEx.value, tipo, durata, serie, repsTarget, pesoSuggerito};
+        editingEx=null;
+      } else {
+        b.esercizi.push({lid:uid(), exId:selEx.value, tipo, durata, serie, repsTarget, pesoSuggerito});
+      }
       renderBlocchi();
     });
 
@@ -1255,7 +1269,22 @@ function renderBlocchi() {
     if (inpRepsTarget) inline.append(inpRepsTarget);
     if (inpPesoSug)    inline.append(inpPesoSug);
     inline.append(btnPlus);
-    // visibilità iniziale basata sul valore default di selTipo
+
+    if (editingThis!=null) {
+      const it=b.esercizi[editingThis];
+      selEx.value=it.exId;
+      selTipo.value=it.tipo;
+      if (it.durata) inpDur.value=it.durata;
+      if (inpSerie && it.serie) inpSerie.value=it.serie;
+      if (inpRepsTarget && it.repsTarget) inpRepsTarget.value=it.repsTarget;
+      if (inpPesoSug && it.pesoSuggerito!=null) inpPesoSug.value=it.pesoSuggerito;
+      const btnCancelEdit=el('button'); btnCancelEdit.type='button'; btnCancelEdit.className='btn btn-ghost btn-sm';
+      btnCancelEdit.textContent='Annulla'; btnCancelEdit.style.minHeight='52px'; btnCancelEdit.style.padding='0 14px';
+      btnCancelEdit.addEventListener('click',()=>{ editingEx=null; renderBlocchi(); });
+      inline.append(btnCancelEdit);
+    }
+    // visibilità iniziale basata sul valore corrente di selTipo
+    inpDur.style.display          = selTipo.value==='tempo'?'block':'none';
     if (inpRepsTarget) inpRepsTarget.style.display = selTipo.value==='peso'?'block':'none';
     if (inpPesoSug)    inpPesoSug.style.display    = selTipo.value==='peso'?'block':'none';
     // aggiorna visibilità al cambio tipo
@@ -1271,8 +1300,30 @@ function renderBlocchi() {
   });
 }
 
-/* ── Modal nuovo blocco ── */
+/* ── Modal nuovo/modifica blocco ── */
+let editingBloccoIdx=null;
+function openBloccoModal(bi) {
+  editingBloccoIdx=bi;
+  const b=editBlocchi[bi];
+  $('mb-title').textContent='Modifica blocco';
+  $('mb-save').textContent='Salva blocco';
+  $('mb-name').value=b.name;
+  $('mb-tipo').value=b.tipo||'circuito';
+  $('mb-giri').value=b.giri||3;
+  $('mb-recupero').value=b.recupero!=null?b.recupero:(b.tipo==='serie'?90:30);
+  const isSerie=b.tipo==='serie';
+  $('mb-giri-wrap').style.display=isSerie?'none':'block';
+  $('mb-recupero-wrap').style.display='block';
+  $('mb-recupero-label').textContent = isSerie
+    ? 'Recupero tra le serie (secondi)'
+    : 'Recupero tra gli esercizi (secondi)';
+  $('modal-blocco').classList.add('open');
+  setTimeout(()=>$('mb-name').focus(),100);
+}
 $('btn-add-blocco').addEventListener('click',()=>{
+  editingBloccoIdx=null;
+  $('mb-title').textContent='Nuovo blocco';
+  $('mb-save').textContent='Aggiungi blocco';
   $('mb-name').value=''; $('mb-giri').value=3;
   $('mb-tipo').value='circuito'; $('mb-recupero').value=30;
   $('mb-recupero-label').textContent='Recupero tra gli esercizi (secondi)';
@@ -1289,7 +1340,7 @@ $('mb-tipo').addEventListener('change',()=>{
     : 'Recupero tra gli esercizi (secondi)';
   $('mb-recupero').value = isSerie ? 90 : 30;
 });
-$('mb-cancel').addEventListener('click',()=>$('modal-blocco').classList.remove('open'));
+$('mb-cancel').addEventListener('click',()=>{ editingBloccoIdx=null; $('modal-blocco').classList.remove('open'); });
 $('mb-save').addEventListener('click',()=>{
   const name=$('mb-name').value.trim();
   if (!name) { alert('Inserisci un nome.'); return; }
@@ -1297,7 +1348,13 @@ $('mb-save').addEventListener('click',()=>{
   const giri=tipo==='serie'?1:(parseInt($('mb-giri').value)||3);
   const recParsed=parseInt($('mb-recupero').value);
   const recupero=isNaN(recParsed)?(tipo==='serie'?90:30):recParsed;
-  editBlocchi.push({lid:uid(),name,giri,tipo,recupero,esercizi:[]});
+  if (editingBloccoIdx!=null) {
+    const b=editBlocchi[editingBloccoIdx];
+    b.name=name; b.tipo=tipo; b.giri=giri; b.recupero=recupero;
+    editingBloccoIdx=null;
+  } else {
+    editBlocchi.push({lid:uid(),name,giri,tipo,recupero,esercizi:[]});
+  }
   renderBlocchi();
   $('modal-blocco').classList.remove('open');
 });
