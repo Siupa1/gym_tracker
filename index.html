@@ -2108,6 +2108,22 @@ $('btn-pdf-storico').addEventListener('click', () => {
   const exName=exId ? (exercises.find(e=>e.id===exId)?.name || '') : 'Tutti gli esercizi';
   $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome||''}`;
   $('ph-sub').textContent = `${exName} · esportato il ${new Date().toLocaleDateString('it-IT')}`;
+
+  const isIOS = /iP(hone|od|ad)/.test(navigator.platform)
+    || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  const isStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIOS && isStandalone) {
+    // su iOS la stampa (e quindi l'export PDF) non funziona nelle app aperte dall'icona Home:
+    // si apre Safari, dove la stampa funziona normalmente
+    alert('Su iPhone la stampa non funziona nell\'app aperta dalla Home. Si aprirà Safari: da lì premi di nuovo "Esporta PDF", poi nella finestra di stampa apri l\'anteprima a schermo intero e usa l\'icona di condivisione → "Salva su File" (PDF).');
+    window.open(location.href, '_blank');
+    return;
+  }
+  if (isIOS) {
+    alert('Nella finestra di stampa che si apre: tocca l\'anteprima per aprirla a schermo intero, poi usa l\'icona di condivisione in alto e scegli "Salva su File" per ottenere il PDF.');
+  }
   window.print();
 });
 
