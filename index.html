@@ -1263,6 +1263,53 @@ QR.forEach(n=>{
 /* struttura sessione */
 let sess=null;
 
+/* ── Wake Lock: tiene lo schermo acceso durante l'allenamento ── */
+let wakeLock=null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  } catch (err) {
+    // alcuni browser/contesti negano il wake lock: l'app funziona comunque, solo senza schermo sempre acceso
+    console.warn('Wake Lock non disponibile:', err);
+  }
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock=null; }
+}
+// se lo schermo viene bloccato e poi sbloccato, e siamo ancora in allenamento, richiedi di nuovo il wake lock
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState==='visible' && sess && !wakeLock) requestWakeLock();
+});
+
+/* ── Beep audio: fallback per la vibrazione, che iOS Safari non supporta ── */
+let audioCtx=null;
+function playBeep(times=1) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (audioCtx.state==='suspended') audioCtx.resume();
+    for (let i=0;i<times;i++) {
+      const t0 = audioCtx.currentTime + i*0.35;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=880;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.3, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.22);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0+0.25);
+    }
+  } catch (err) {
+    console.warn('Audio non disponibile:', err);
+  }
+}
+function notifyEnd(pattern=[300,100,300]) {
+  if (navigator.vibrate) navigator.vibrate(pattern); // funziona su Android
+  playBeep(pattern.length>2?2:1); // funziona ovunque, incluso iPhone
+}
+
 $('btn-inizia').addEventListener('click',()=>{
   const sid=$('al-sel-scheda').value;
   if (!sid) { alert('Scegli una scheda.'); return; }
@@ -1335,6 +1382,7 @@ $('btn-inizia').addEventListener('click',()=>{
   sess={sid, sName:s.name, steps, cur:0, results:[], ts:Date.now()};
   $('al-start').style.display='none';
   $('al-session').style.display='block';
+  requestWakeLock();
   renderStep();
 });
 
@@ -1609,6 +1657,7 @@ $('btn-next-giro').addEventListener('click',()=>{
 /* ── fine sessione ── */
 function showEnd() {
   stopTimer(); stopRecupero();
+  releaseWakeLock();
   $('prog-fill').style.width='100%';
   $('ex-card').style.display='none';
   $('giro-wrap').style.display='none';
@@ -1620,6 +1669,7 @@ function showEnd() {
 }
 
 $('btn-fine').addEventListener('click',()=>{
+  releaseWakeLock();
   sess=null;
   $('al-session').style.display='none';
   $('al-start').style.display='block';
@@ -1650,7 +1700,7 @@ function startRecupero() {
     updateRecUI();
     if (recLeft<=0) {
       stopRecupero();
-      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      notifyEnd([200,100,200]);
       // avanza automaticamente dopo 1 secondo
       setTimeout(()=>{
         if ($('recupero-wrap').style.display!=='none') advance();
@@ -1699,7 +1749,7 @@ function startTimer() {
       stopTimer();
       $('btn-t-start').textContent='✓ Completato!';
       $('btn-t-start').style.background='#1a7f37';
-      if (navigator.vibrate) navigator.vibrate([300,100,300]);
+      notifyEnd([300,100,300]);
     }
   },1000);
 }
