@@ -1080,7 +1080,7 @@ function openEditor(schedaId) {
     $('editor-title').textContent='Modifica scheda';
     editBlocchi=(s.blocchi||[]).map(b=>({
       lid:uid(), name:b.name, giri:b.giri,
-      tipo:b.tipo||'circuito', recupero:b.recupero||null,
+      tipo:b.tipo||'circuito', recupero:(b.recupero!=null?b.recupero:null),
       esercizi:(b.esercizi||[]).map(e=>({
         lid:uid(), exId:e.exId,
         tipo: e.tipo||(e.sovraccarico?'peso':'solo'),
@@ -1117,7 +1117,7 @@ async function doSalva() {
     blocchi: editBlocchi.map(b=>({
       name:b.name, giri:b.giri,
       tipo:b.tipo||'circuito',
-      recupero:b.recupero||null,
+      recupero:(b.recupero!=null?b.recupero:null),
       esercizi:b.esercizi.map(e=>({
         exId:e.exId,
         tipo:e.tipo||'solo',
@@ -1156,8 +1156,7 @@ function renderBlocchi() {
     if (b.tipo==='serie') {
       hgiri.textContent=`Serie · recupero ${b.recupero!=null?b.recupero:90}s`;
     } else {
-      const recC=b.recupero!=null?b.recupero:30;
-      hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'} · recupero ${recC}s`;
+      hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'} · senza recupero`;
     }
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
@@ -1313,10 +1312,8 @@ function openBloccoModal(bi) {
   $('mb-recupero').value=b.recupero!=null?b.recupero:(b.tipo==='serie'?90:30);
   const isSerie=b.tipo==='serie';
   $('mb-giri-wrap').style.display=isSerie?'none':'block';
-  $('mb-recupero-wrap').style.display='block';
-  $('mb-recupero-label').textContent = isSerie
-    ? 'Recupero tra le serie (secondi)'
-    : 'Recupero tra gli esercizi (secondi)';
+  $('mb-recupero-wrap').style.display=isSerie?'block':'none';
+  $('mb-recupero-label').textContent='Recupero tra le serie (secondi)';
   $('modal-blocco').classList.add('open');
   setTimeout(()=>$('mb-name').focus(),100);
 }
@@ -1326,19 +1323,17 @@ $('btn-add-blocco').addEventListener('click',()=>{
   $('mb-save').textContent='Aggiungi blocco';
   $('mb-name').value=''; $('mb-giri').value=3;
   $('mb-tipo').value='circuito'; $('mb-recupero').value=30;
-  $('mb-recupero-label').textContent='Recupero tra gli esercizi (secondi)';
+  $('mb-recupero-label').textContent='Recupero tra le serie (secondi)';
   $('mb-giri-wrap').style.display='block';
-  $('mb-recupero-wrap').style.display='block';
+  $('mb-recupero-wrap').style.display='none';
   $('modal-blocco').classList.add('open');
   setTimeout(()=>$('mb-name').focus(),100);
 });
 $('mb-tipo').addEventListener('change',()=>{
   const isSerie=$('mb-tipo').value==='serie';
   $('mb-giri-wrap').style.display=isSerie?'none':'block';
-  $('mb-recupero-label').textContent = isSerie
-    ? 'Recupero tra le serie (secondi)'
-    : 'Recupero tra gli esercizi (secondi)';
-  $('mb-recupero').value = isSerie ? 90 : 30;
+  $('mb-recupero-wrap').style.display=isSerie?'block':'none';
+  $('mb-recupero').value = 90;
 });
 $('mb-cancel').addEventListener('click',()=>{ editingBloccoIdx=null; $('modal-blocco').classList.remove('open'); });
 $('mb-save').addEventListener('click',()=>{
@@ -1346,8 +1341,11 @@ $('mb-save').addEventListener('click',()=>{
   if (!name) { alert('Inserisci un nome.'); return; }
   const tipo=$('mb-tipo').value;
   const giri=tipo==='serie'?1:(parseInt($('mb-giri').value)||3);
-  const recParsed=parseInt($('mb-recupero').value);
-  const recupero=isNaN(recParsed)?(tipo==='serie'?90:30):recParsed;
+  let recupero=null;
+  if (tipo==='serie') {
+    const recParsed=parseInt($('mb-recupero').value);
+    recupero=isNaN(recParsed)?90:recParsed;
+  }
   if (editingBloccoIdx!=null) {
     const b=editBlocchi[editingBloccoIdx];
     b.name=name; b.tipo=tipo; b.giri=giri; b.recupero=recupero;
@@ -1467,9 +1465,8 @@ $('btn-inizia').addEventListener('click',()=>{
         }
       });
     } else {
-      // circuito: tutti gli esercizi per ogni giro, con recupero tra un esercizio e l'altro
-      // (non dopo l'ultimo esercizio del giro: lì c'è il riepilogo)
-      const recCirc=b.recupero!=null?b.recupero:30;
+      // circuito: tutti gli esercizi per ogni giro, in sequenza senza recupero
+      // (il riepilogo compare solo al cambio giro/blocco)
       const esArr=b.esercizi||[];
       for (let g=1;g<=b.giri;g++) {
         esArr.forEach((e,ei)=>{
@@ -1481,16 +1478,6 @@ $('btn-inizia').addEventListener('click',()=>{
             durata:e.durata||null,
             isRecupero:false
           });
-          if (recCirc>0 && ei<esArr.length-1) {
-            const nextE=esArr[ei+1];
-            steps.push({
-              bi, bName:b.name, tipoBlocco:'circuito',
-              giro:g, giriTot:b.giri,
-              ei, exId:e.exId, nextExId:nextE.exId,
-              tipo:'recupero', durata:recCirc,
-              isRecupero:true
-            });
-          }
         });
       }
     }
