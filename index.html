@@ -639,9 +639,9 @@
         <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Numero di giri</label>
         <input class="inp" type="number" id="mb-giri" min="1" max="20" value="3" inputmode="numeric" />
       </div>
-      <div id="mb-recupero-wrap" style="display:none">
-        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px">Recupero tra le serie (secondi)</label>
-        <input class="inp" type="number" id="mb-recupero" min="0" max="600" value="90" inputmode="numeric" />
+      <div id="mb-recupero-wrap">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px" id="mb-recupero-label">Recupero tra gli esercizi (secondi)</label>
+        <input class="inp" type="number" id="mb-recupero" min="0" max="600" value="30" inputmode="numeric" />
       </div>
     </div>
     <div class="modal-row">
@@ -1092,9 +1092,10 @@ function renderBlocchi() {
     const hnm=el('span'); hnm.className='bh-name'; hnm.textContent=b.name;
     const hgiri=el('span'); hgiri.className='bh-giri';
     if (b.tipo==='serie') {
-      hgiri.textContent=`Serie · recupero ${b.recupero||90}s`;
+      hgiri.textContent=`Serie · recupero ${b.recupero!=null?b.recupero:90}s`;
     } else {
-      hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'}`;
+      const recC=b.recupero!=null?b.recupero:30;
+      hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'} · recupero ${recC}s`;
     }
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
@@ -1212,16 +1213,20 @@ function renderBlocchi() {
 /* ── Modal nuovo blocco ── */
 $('btn-add-blocco').addEventListener('click',()=>{
   $('mb-name').value=''; $('mb-giri').value=3;
-  $('mb-tipo').value='circuito'; $('mb-recupero').value=90;
+  $('mb-tipo').value='circuito'; $('mb-recupero').value=30;
+  $('mb-recupero-label').textContent='Recupero tra gli esercizi (secondi)';
   $('mb-giri-wrap').style.display='block';
-  $('mb-recupero-wrap').style.display='none';
+  $('mb-recupero-wrap').style.display='block';
   $('modal-blocco').classList.add('open');
   setTimeout(()=>$('mb-name').focus(),100);
 });
 $('mb-tipo').addEventListener('change',()=>{
   const isSerie=$('mb-tipo').value==='serie';
   $('mb-giri-wrap').style.display=isSerie?'none':'block';
-  $('mb-recupero-wrap').style.display=isSerie?'block':'none';
+  $('mb-recupero-label').textContent = isSerie
+    ? 'Recupero tra le serie (secondi)'
+    : 'Recupero tra gli esercizi (secondi)';
+  $('mb-recupero').value = isSerie ? 90 : 30;
 });
 $('mb-cancel').addEventListener('click',()=>$('modal-blocco').classList.remove('open'));
 $('mb-save').addEventListener('click',()=>{
@@ -1229,7 +1234,8 @@ $('mb-save').addEventListener('click',()=>{
   if (!name) { alert('Inserisci un nome.'); return; }
   const tipo=$('mb-tipo').value;
   const giri=tipo==='serie'?1:(parseInt($('mb-giri').value)||3);
-  const recupero=tipo==='serie'?(parseInt($('mb-recupero').value)||90):null;
+  const recParsed=parseInt($('mb-recupero').value);
+  const recupero=isNaN(recParsed)?(tipo==='serie'?90:30):recParsed;
   editBlocchi.push({lid:uid(),name,giri,tipo,recupero,esercizi:[]});
   renderBlocchi();
   $('modal-blocco').classList.remove('open');
@@ -1268,6 +1274,7 @@ $('btn-inizia').addEventListener('click',()=>{
   (s.blocchi||[]).forEach((b,bi)=>{
     const tipoBlocco=b.tipo||'circuito';
     if (tipoBlocco==='serie') {
+      const recSerie=b.recupero!=null?b.recupero:90;
       // ogni esercizio fa tutte le sue serie consecutive con recupero in mezzo
       (b.esercizi||[]).forEach((e,ei)=>{
         const nSerie=e.serie||3; // default 3 serie se non specificato
@@ -1283,21 +1290,24 @@ $('btn-inizia').addEventListener('click',()=>{
             isRecupero:false
           });
           // recupero dopo ogni serie tranne l'ultima
-          if (g<nSerie) {
+          if (g<nSerie && recSerie>0) {
             steps.push({
               bi, bName:b.name, tipoBlocco:'serie',
               giro:g, giriTot:nSerie,
               ei, exId:e.exId,
-              tipo:'recupero', durata:b.recupero||90,
+              tipo:'recupero', durata:recSerie,
               isRecupero:true
             });
           }
         }
       });
     } else {
-      // circuito: tutti gli esercizi per ogni giro
+      // circuito: tutti gli esercizi per ogni giro, con recupero tra un esercizio e l'altro
+      // (non dopo l'ultimo esercizio del giro: lì c'è il riepilogo)
+      const recCirc=b.recupero!=null?b.recupero:30;
+      const esArr=b.esercizi||[];
       for (let g=1;g<=b.giri;g++) {
-        (b.esercizi||[]).forEach((e,ei)=>{
+        esArr.forEach((e,ei)=>{
           steps.push({
             bi, bName:b.name, tipoBlocco:'circuito',
             giro:g, giriTot:b.giri,
@@ -1306,6 +1316,16 @@ $('btn-inizia').addEventListener('click',()=>{
             durata:e.durata||null,
             isRecupero:false
           });
+          if (recCirc>0 && ei<esArr.length-1) {
+            const nextE=esArr[ei+1];
+            steps.push({
+              bi, bName:b.name, tipoBlocco:'circuito',
+              giro:g, giriTot:b.giri,
+              ei, exId:e.exId, nextExId:nextE.exId,
+              tipo:'recupero', durata:recCirc,
+              isRecupero:true
+            });
+          }
         });
       }
     }
@@ -1432,10 +1452,13 @@ function renderStep() {
 
   // step di recupero
   if (step.isRecupero) {
-    const ex=exercises.find(e=>e.id===step.exId);
-    $('rec-next-label').textContent=`Prossima: ${ex?.name||''} — Serie ${step.giro+1}/${step.giriTot}`;
+    const nextId=step.nextExId||step.exId;
+    const ex=exercises.find(e=>e.id===nextId);
+    $('rec-next-label').textContent = step.tipoBlocco==='serie'
+      ? `Prossima: ${ex?.name||''} — Serie ${step.giro+1}/${step.giriTot}`
+      : `Prossimo: ${ex?.name||''}`;
     $('recupero-wrap').style.display='block';
-    initRecupero(step.durata||90);
+    initRecupero(step.durata||30);
     return;
   }
 
@@ -1564,7 +1587,9 @@ function showGiroRiepilogo(lastStep) {
     else if (s.tipo!=='peso')    val='<span style="color:#1a7f37">✓</span>';
     else { const ws=res.weight!=null?` × ${res.weight} kg`:''; val=`<strong>${res.reps} reps${ws}</strong>`; }
     const r=el('div'); r.className='recap-row';
-    r.innerHTML=`<span>${ex?.name||'—'}</span><span>${val}</span>`;
+    const spanName=el('span'); spanName.textContent=ex?.name||'—'; // testo non fidato → textContent, mai innerHTML
+    const spanVal=el('span'); spanVal.innerHTML=val; // val è generato solo dall'app, mai da input utente
+    r.append(spanName, spanVal);
     rows.appendChild(r);
   });
 
@@ -1729,13 +1754,18 @@ function renderStoria(exId) {
   desc.forEach(log=>{
     const ex=exercises.find(e=>e.id===log.exerciseId);
     const tr=el('tr');
-    tr.innerHTML=`
-      ${showEx?`<td style="font-size:12px;color:#888">${ex?.name||'—'}</td>`:''}
-      <td>${fmtDate(log.clientTs)}</td>
-      <td>${fmtTime(log.clientTs)}</td>
-      <td><strong>${log.reps??'—'}</strong></td>
-      <td>${log.weight!=null?log.weight:'—'}</td>
-      <td><button class="del-row" data-id="${log.id}">✕</button></td>`;
+    if (showEx) {
+      const tdEx=el('td'); tdEx.style.fontSize='12px'; tdEx.style.color='#888';
+      tdEx.textContent=ex?.name||'—'; // testo non fidato → textContent, mai innerHTML
+      tr.appendChild(tdEx);
+    }
+    const tdDate=el('td'); tdDate.textContent=fmtDate(log.clientTs); tr.appendChild(tdDate);
+    const tdTime=el('td'); tdTime.textContent=fmtTime(log.clientTs); tr.appendChild(tdTime);
+    const tdReps=el('td'); const strong=el('strong'); strong.textContent=log.reps??'—';
+    tdReps.appendChild(strong); tr.appendChild(tdReps);
+    const tdKg=el('td'); tdKg.textContent=log.weight!=null?log.weight:'—'; tr.appendChild(tdKg);
+    const tdDel=el('td'); const btnDel=el('button'); btnDel.className='del-row'; btnDel.textContent='✕';
+    btnDel.dataset.id=log.id; tdDel.appendChild(btnDel); tr.appendChild(tdDel);
     tbody.appendChild(tr);
   });
   cont.appendChild(t);
