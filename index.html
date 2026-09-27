@@ -12,7 +12,6 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <title>GymTracker</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* disabilita evidenziazione tap blu iOS */
@@ -201,6 +200,13 @@
     .sess-header .sh-left h4 { font-size: 14px; font-weight: bold; color: #d0021b; }
     .sess-header .sh-left p  { font-size: 12px; color: #aaa; margin-top: 2px; }
     .sess-header .sh-prog    { font-size: 12px; color: #888; }
+    .sess-header .sh-right   { display: flex; align-items: center; gap: 4px; }
+    .sh-cancel {
+      background: none; border: none; color: #888; font-size: 20px;
+      padding: 0 4px; cursor: pointer; min-width: 40px; min-height: 40px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sh-cancel:active { color: #d0021b; }
 
     .progress-bar-wrap { background: #333; height: 4px; margin: -14px -14px 14px; }
     .progress-bar-fill { background: #d0021b; height: 4px; transition: width .4s; }
@@ -424,7 +430,7 @@
     <div class="ub-avatar" id="ub-avatar"></div>
     <span class="ub-name" id="ub-name"></span>
   </div>
-  <button id="btn-export" title="Esporta report PDF">📄</button>
+  <button id="btn-export" title="Esporta dati">⬇</button>
   <span id="sync">●</span>
 </header>
 
@@ -510,7 +516,10 @@
         <h4 id="sh-giro"></h4>
         <p  id="sh-blocco"></p>
       </div>
-      <span id="sh-prog"></span>
+      <div class="sh-right">
+        <span id="sh-prog"></span>
+        <button class="sh-cancel" id="btn-annulla-al" title="Annulla allenamento">✕</button>
+      </div>
     </div>
 
     <div class="ex-card" id="ex-card">
@@ -863,170 +872,32 @@ $('user-badge').addEventListener('click', () => {
   if (unsubSch)  { unsubSch();  unsubSch=null; }
 });
 
-/* ── esporta report PDF (grafici + elenco esercizi) ── */
-function drawMiniChart(title, unit, points, color) {
-  const W=500, H=240;
-  const canvas=document.createElement('canvas');
-  canvas.width=W; canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#1c1c1c'; ctx.font='bold 20px Arial';
-  ctx.fillText(title, 14, 26);
-
-  const PL=48, PR=14, PT=42, PB=32;
-  const iW=W-PL-PR, iH=H-PT-PB;
-  const n=points.length;
-  const vals=points.map(p=>p.y);
-  const mn=Math.min(...vals), mx=Math.max(...vals);
-  const range=(mx-mn)||1;
-  const xOf=i=> PL + (n===1? iW/2 : i*(iW/(n-1)));
-  const yOf=v=> PT + iH - ((v-mn)/range)*iH;
-
-  // griglia
-  ctx.strokeStyle='#eee'; ctx.lineWidth=1;
-  for (let k=0;k<=3;k++) {
-    const y=PT+k*(iH/3);
-    ctx.beginPath(); ctx.moveTo(PL,y); ctx.lineTo(PL+iW,y); ctx.stroke();
-  }
-  // etichette min/max
-  ctx.fillStyle='#888'; ctx.font='13px Arial'; ctx.textAlign='right';
-  ctx.fillText(`${mx} ${unit}`, PL-6, PT+6);
-  ctx.fillText(`${mn} ${unit}`, PL-6, PT+iH+2);
-
-  // linea + punti
-  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.lineJoin='round'; ctx.lineCap='round';
-  ctx.beginPath();
-  points.forEach((p,i)=>{ const x=xOf(i), y=yOf(p.y); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-  ctx.stroke();
-  ctx.fillStyle=color;
-  points.forEach((p,i)=>{
-    const x=xOf(i), y=yOf(p.y);
-    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
-  });
-
-  // date prima/ultima
-  ctx.fillStyle='#888'; ctx.font='12px Arial';
-  ctx.textAlign='left';  ctx.fillText(points[0].label, PL, H-10);
-  ctx.textAlign='right'; ctx.fillText(points[n-1].label, PL+iW, H-10);
-
-  return canvas.toDataURL('image/png');
-}
-
-async function exportPDF() {
+/* ── esporta dati (backup) ── */
+$('btn-export').addEventListener('click', () => {
   if (!currentUser) return;
-  if (!window.jspdf) { alert('Libreria PDF non ancora pronta, riprova tra un istante.'); return; }
-  const { jsPDF } = window.jspdf;
-
-  // raggruppa i log per esercizio, in ordine cronologico
-  const byEx={};
-  logs.forEach(l=>{ (byEx[l.exerciseId] ||= []).push(l); });
-  Object.values(byEx).forEach(arr=>arr.sort((a,b)=>(tsMs(a.clientTs)||0)-(tsMs(b.clientTs)||0)));
-
-  // esercizi con abbastanza dati per un grafico (peso se disponibile, altrimenti reps)
-  const chartables = Object.entries(byEx).map(([exId,arr])=>{
-    const ex=exercises.find(e=>e.id===exId);
-    const withPeso=arr.filter(l=>l.weight!=null);
-    const withReps=arr.filter(l=>l.reps!=null);
-    const usePeso=withPeso.length>=2;
-    const useReps=!usePeso&&withReps.length>=2;
-    if (!usePeso && !useReps) return null;
-    const src=usePeso?withPeso:withReps;
-    return {
-      name: ex?.name||'Esercizio', unit: usePeso?'kg':'reps',
-      points: src.map(l=>({ y: usePeso?l.weight:l.reps, label: fmtDate(l.clientTs) })),
-      count: arr.length
-    };
-  }).filter(Boolean).sort((a,b)=>b.count-a.count).slice(0,6);
-
-  const doc=new jsPDF({ unit:'mm', format:'a4' });
-  const pageW=doc.internal.pageSize.getWidth();
-  const pageH=doc.internal.pageSize.getHeight();
-  const margin=14;
-  let y=30;
-
-  // intestazione
-  doc.setFillColor(208,2,27);
-  doc.rect(0,0,pageW,22,'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(16);
-  doc.text('GymTracker — Report allenamenti', margin, 14);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  doc.text(`${currentUser.nome} · esportato il ${new Date().toLocaleDateString('it-IT')}`, margin, 19);
-  doc.setTextColor(28,28,28);
-
-  // grafici, 2 per riga
-  if (chartables.length) {
-    doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    doc.text('Andamento', margin, y); y+=6;
-    const chartW=(pageW-margin*2-6)/2, chartH=chartW*0.48;
-    let col=0;
-    chartables.forEach(c=>{
-      if (col===0 && y+chartH>pageH-margin) { doc.addPage(); y=margin; }
-      const x=margin+col*(chartW+6);
-      const img=drawMiniChart(c.name, c.unit, c.points, '#d0021b');
-      doc.addImage(img,'PNG',x,y,chartW,chartH);
-      if (col===0) col=1; else { col=0; y+=chartH+6; }
-    });
-    if (col===1) y+=chartH+6;
-  } else {
-    doc.setFont('helvetica','italic'); doc.setFontSize(11); doc.setTextColor(120,120,120);
-    doc.text('Non ci sono ancora abbastanza dati per generare dei grafici.', margin, y);
-    doc.setTextColor(28,28,28); y+=8;
-  }
-
-  // elenco esercizi
-  y+=4;
-  if (y>pageH-40) { doc.addPage(); y=margin; }
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Esercizi', margin, y); y+=7;
-
-  const cols=[{label:'Esercizio',w:60},{label:'Volte',w:20},{label:'Ultima volta',w:30},
-              {label:'Ultimo peso',w:30},{label:'Ultime reps',w:30}];
-  function drawTableHeader() {
-    doc.setFillColor(240,240,240);
-    doc.rect(margin,y-5,pageW-margin*2,7,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(80,80,80);
-    let cx=margin+2;
-    cols.forEach(c=>{ doc.text(c.label,cx,y); cx+=c.w; });
-    doc.setTextColor(28,28,28); y+=6;
-  }
-  drawTableHeader();
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-
-  const rows=Object.entries(byEx).map(([exId,arr])=>{
-    const ex=exercises.find(e=>e.id===exId);
-    const last=arr[arr.length-1];
-    return {
-      nome: ex?.name||'Esercizio eliminato', volte: arr.length,
-      ultima: fmtDate(last.clientTs),
-      peso: last.weight!=null?`${last.weight} kg`:'—',
-      reps: last.reps!=null?String(last.reps):'—'
-    };
-  }).sort((a,b)=>a.nome.localeCompare(b.nome));
-
-  rows.forEach(r=>{
-    if (y>pageH-margin) { doc.addPage(); y=margin; drawTableHeader(); doc.setFont('helvetica','normal'); doc.setFontSize(9); }
-    let cx=margin+2;
-    doc.text(r.nome.slice(0,34),cx,y); cx+=cols[0].w;
-    doc.text(String(r.volte),cx,y); cx+=cols[1].w;
-    doc.text(r.ultima,cx,y); cx+=cols[2].w;
-    doc.text(r.peso,cx,y); cx+=cols[3].w;
-    doc.text(r.reps,cx,y); cx+=cols[4].w;
-    y+=6;
-    doc.setDrawColor(230,230,230);
-    doc.line(margin,y-4.5,pageW-margin,y-4.5);
-  });
-
-  if (!rows.length) {
-    doc.setTextColor(120,120,120); doc.setFont('helvetica','italic');
-    doc.text('Nessun esercizio registrato ancora.', margin, y);
-    doc.setTextColor(28,28,28);
-  }
-
-  const dataFile=new Date().toISOString().slice(0,10);
-  doc.save(`gymtracker-report-${currentUser.nome}-${dataFile}.pdf`);
-}
-$('btn-export').addEventListener('click', exportPDF);
+  const payload = {
+    esportatoIl: new Date().toISOString(),
+    profilo: { nome: currentUser.nome },
+    esercizi: exercises.map(e=>({ nome:e.name, immagine:e.image||null })),
+    schede: schede.map(s=>({ nome:s.name, blocchi:s.blocchi })),
+    log: logs.map(l=>({
+      esercizio: exercises.find(e=>e.id===l.exerciseId)?.name || l.exerciseId,
+      reps: l.reps ?? null,
+      peso: l.weight ?? null,
+      data: new Date(tsMs(l.clientTs)||Date.now()).toISOString()
+    }))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = el('a');
+  a.href = url;
+  const dataFile = new Date().toISOString().slice(0,10);
+  a.download = `gymtracker-backup-${currentUser.nome}-${dataFile}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
 
 /* ─── Timestamp ─── */
 function tsMs(ts) {
@@ -1572,6 +1443,7 @@ $('btn-inizia').addEventListener('click',()=>{
   sess={sid, sName:s.name, steps, cur:0, results:[], ts:Date.now()};
   $('al-start').style.display='none';
   $('al-session').style.display='block';
+  $('btn-annulla-al').style.display='';
   requestWakeLock();
   renderStep();
 });
@@ -1853,6 +1725,7 @@ function showEnd() {
   $('giro-wrap').style.display='none';
   $('btn-skip').style.display='none';
   $('btn-next').style.display='none';
+  $('btn-annulla-al').style.display='none';
   const tot=sess.results.filter(r=>!r.skipped&&r.reps).length;
   $('end-msg').textContent=`${tot} set registrati. Ottimo lavoro!`;
   $('end-wrap').style.display='block';
@@ -1865,6 +1738,26 @@ $('btn-fine').addEventListener('click',()=>{
   $('al-start').style.display='block';
   $('prog-fill').style.width='0';
 });
+
+/* ── annulla allenamento in corso ── */
+function cancelWorkout() {
+  if (!sess) return;
+  const tot=sess.results.filter(r=>!r.skipped&&r.reps).length;
+  const msg = tot>0
+    ? `Annullare l'allenamento? I ${tot} set già registrati resteranno salvati, ma il resto della scheda verrà interrotto.`
+    : `Annullare l'allenamento in corso?`;
+  if (!confirm(msg)) return;
+  stopTimer(); stopRecupero();
+  releaseWakeLock();
+  sess=null;
+  $('giro-wrap').style.display='none';
+  $('recupero-wrap').style.display='none';
+  $('end-wrap').style.display='none';
+  $('al-session').style.display='none';
+  $('al-start').style.display='block';
+  $('prog-fill').style.width='0';
+}
+$('btn-annulla-al').addEventListener('click', cancelWorkout);
 
 /* ════════════════════ TIMER RECUPERO ════════════════════ */
 const CIRC_REC=389.6;
