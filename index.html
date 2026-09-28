@@ -212,6 +212,7 @@
     .progress-bar-fill { background: #d0021b; height: 4px; transition: width .4s; }
 
     #print-header { display: none; }
+    #print-groups { display: none; }
 
     @media print {
       body * { visibility: hidden; }
@@ -224,6 +225,12 @@
       .card { border: none; box-shadow: none; padding: 0; }
       .del-row { display: none !important; }
       .h-table th:last-child, .h-table td:last-child { display: none; }
+      html, body, #tab-storia, #tab-storia * { background: #fff !important; color: #000 !important; }
+      body.print-grouped #storia-cont { display: none !important; }
+      body.print-grouped #print-groups { display: block; }
+      .pg-group { margin-bottom: 18px; break-inside: avoid; }
+      .pg-group h3 { font-size: 14px; margin: 0 0 4px; border-bottom: 1px solid #000; padding-bottom: 2px; }
+      .pg-group .h-table td, .pg-group .h-table th { border-bottom: 1px solid #ccc; }
     }
 
     .ex-card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
@@ -646,6 +653,7 @@
       <p id="ph-sub" style="font-size:12px;color:#666;margin-bottom:14px"></p>
     </div>
     <div id="storia-cont"><p class="empty-msg">Nessun log ancora.</p></div>
+    <div id="print-groups"></div>
   </div>
 </div>
 
@@ -1937,6 +1945,7 @@ function renderStoria(exId) {
     : logs.filter(l=>l.reps);
   const sorted=[...filtered].sort((a,b)=>(a.clientTs||0)-(b.clientTs||0)); // crescente per grafico
   const cont=$('storia-cont');
+  const pg=$('print-groups'); pg.innerHTML='';
   if (!sorted.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
 
   cont.innerHTML='';
@@ -1975,6 +1984,32 @@ function renderStoria(exId) {
     tbody.appendChild(tr);
   });
   cont.appendChild(t);
+
+  // versione raggruppata per esercizio (usata solo nel PDF quando sono selezionati tutti)
+  if (!exId) {
+    const groups=new Map();
+    desc.forEach(l=>{
+      const ex=exercises.find(e=>e.id===l.exerciseId);
+      const key=ex?ex.id:'_';
+      if (!groups.has(key)) groups.set(key,{name:ex?.name||'—',logs:[]});
+      groups.get(key).logs.push(l);
+    });
+    [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'it')).forEach(g=>{
+      const box=el('div'); box.className='pg-group';
+      const h=el('h3'); h.textContent=`${g.name} (${g.logs.length} set)`; box.appendChild(h);
+      const gt=el('table'); gt.className='h-table';
+      gt.innerHTML='<thead><tr><th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th></tr></thead><tbody></tbody>';
+      const gb=gt.querySelector('tbody');
+      g.logs.forEach(l=>{
+        const tr=el('tr');
+        [fmtDate(l.clientTs), fmtTime(l.clientTs), l.reps??'—', l.weight!=null?l.weight:'—'].forEach(v=>{
+          const td=el('td'); td.textContent=v; tr.appendChild(td);
+        });
+        gb.appendChild(tr);
+      });
+      box.appendChild(gt); pg.appendChild(box);
+    });
+  }
   cont.querySelectorAll('.del-row').forEach(btn=>{
     btn.addEventListener('click',async()=>{
       syncWait(); await deleteDoc(doc(db,`users/${currentUser.id}/logs`,btn.dataset.id));
@@ -2109,6 +2144,8 @@ $('btn-pdf-storico').addEventListener('click', () => {
   $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome||''}`;
   $('ph-sub').textContent = `${exName} · esportato il ${new Date().toLocaleDateString('it-IT')}`;
 
+  document.body.classList.toggle('print-grouped', !exId);
+  window.addEventListener('afterprint',()=>document.body.classList.remove('print-grouped'),{once:true});
   const isIOS = /iP(hone|od|ad)/.test(navigator.platform)
     || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
   const isStandalone = window.navigator.standalone === true
