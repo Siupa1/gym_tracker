@@ -12,6 +12,9 @@
   <link rel="icon" href="icons/icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <title>GymTracker</title>
+  <meta name="description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
+  <meta property="og:title" content="GymTracker" />
+  <meta property="og:description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* disabilita evidenziazione tap blu iOS */
@@ -146,18 +149,22 @@
     #scheda-editor { display: none; }
     .vgap { display: flex; flex-direction: column; gap: 10px; }
 
-    .blocco-editor { border: 1px solid #ccc; margin-bottom: 12px; background: #fff; }
+    .blocco-editor { border: 1px solid #ccc; margin-bottom: 12px; background: #fff; border-radius: 4px; overflow: hidden; }
     .blocco-header {
-      background: #1c1c1c; color: #fff; padding: 12px;
-      display: flex; align-items: center;
+      background: #1c1c1c; color: #fff; padding: 10px 12px;
+      display: flex; align-items: center; gap: 4px;
     }
     .blocco-header .bh-name { font-size: 14px; font-weight: bold; flex: 1; }
-    .blocco-header .bh-giri { font-size: 12px; color: #aaa; margin-right: 10px; }
-    .blocco-header .bh-del  {
-      background: none; border: none; color: #d0021b; font-size: 22px;
-      padding: 0 4px; cursor: pointer; min-width: 36px; min-height: 36px;
-      display: flex; align-items: center; justify-content: center;
+    .blocco-header .bh-giri { font-size: 12px; color: #aaa; margin-right: 6px; }
+    .blocco-header .bh-btn {
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+      color: #eee; border-radius: 4px; cursor: pointer; min-width: 32px; min-height: 32px;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s; font-size: 14px;
     }
+    .blocco-header .bh-btn:hover { background: rgba(255,255,255,0.25); color: #fff; }
+    .blocco-header .bh-btn.bh-del { background: rgba(208,2,27,0.15); border-color: rgba(208,2,27,0.4); color: #ff5252; font-size: 18px; }
+    .blocco-header .bh-btn.bh-del:hover { background: #d0021b; color: #fff; }
     .blocco-body { padding: 12px; }
 
     .bei-list { list-style: none; margin-bottom: 10px; }
@@ -171,11 +178,15 @@
                 display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
     .bei-name { flex: 1; }
     .bei-tag  { font-size: 11px; color: #888; border: 1px solid #ddd; padding: 3px 7px; white-space: nowrap; }
-    .bei-del  {
-      background: none; border: none; color: #d0021b; font-size: 20px;
-      padding: 0 4px; cursor: pointer; min-width: 36px; min-height: 36px;
-      display: flex; align-items: center; justify-content: center;
+    .bei-btn  {
+      background: #f0f0f0; border: 1px solid #d5d5d5; color: #333;
+      border-radius: 4px; cursor: pointer; min-width: 30px; min-height: 30px;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
     }
+    .bei-btn:hover { background: #e0e0e0; color: #000; }
+    .bei-btn.bei-del { background: none; border: none; color: #d0021b; font-size: 18px; min-width: 26px; }
+    .bei-btn.bei-del:hover { background: rgba(208,2,27,0.1); }
 
     /* riga aggiungi esercizio al blocco */
     .add-ex-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
@@ -202,7 +213,35 @@
     .sess-header .sh-left h4 { font-size: 14px; font-weight: bold; color: #d0021b; }
     .sess-header .sh-left p  { font-size: 12px; color: #aaa; margin-top: 2px; }
     .sess-header .sh-prog    { font-size: 12px; color: #888; }
-    .sess-header .sh-right   { display: flex; align-items: center; gap: 4px; }
+    .sess-header .sh-right   { display: flex; align-items: center; gap: 8px; }
+    .wakelock-btn {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+      color: #aaa; border-radius: 14px; font-size: 11px; font-weight: 600;
+      padding: 4px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+      transition: all 0.2s; user-select: none;
+    }
+    .wakelock-btn.active {
+      background: rgba(38, 166, 154, 0.2); border-color: #26a69a; color: #80cbc4;
+    }
+    .wakelock-btn .wl-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #666;
+    }
+    .wakelock-btn.active .wl-dot {
+      background: #00e676; box-shadow: 0 0 6px #00e676;
+    }
+    .pr-banner {
+      position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-25px);
+      background: linear-gradient(135deg, #1c1c1c 0%, #2b1214 100%);
+      color: #fff; border: 2px solid #ffd700; box-shadow: 0 8px 24px rgba(255,215,0,0.35);
+      padding: 12px 18px; border-radius: 8px; z-index: 10000; text-align: center;
+      opacity: 0; pointer-events: none; transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      max-width: 90%;
+    }
+    .pr-banner.show {
+      opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+    }
+    .pr-banner-title { font-size: 14px; font-weight: 800; color: #ffd700; letter-spacing: 0.5px; }
+    .pr-banner-desc { font-size: 12px; color: #eee; margin-top: 3px; }
     .sh-cancel {
       background: none; border: none; color: #888; font-size: 20px;
       padding: 0 4px; cursor: pointer; min-width: 40px; min-height: 40px;
@@ -559,6 +598,10 @@
         <p  id="sh-blocco"></p>
       </div>
       <div class="sh-right">
+        <button class="wakelock-btn" id="btn-wakelock" type="button" title="Schermo sempre attivo: clicca per attivare o disattivare">
+          <span class="wl-dot"></span>
+          <span id="wl-label">Schermo ON</span>
+        </button>
         <span id="sh-prog"></span>
         <button class="sh-cancel" id="btn-annulla-al" title="Annulla allenamento">✕</button>
       </div>
@@ -635,7 +678,7 @@
     <div id="recupero-wrap" style="display:none;margin-top:14px">
       <div class="card" style="text-align:center;padding:24px 16px">
         <p style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Recupero</p>
-        <div class="timer-ring" style="margin:0 auto 14px">
+        <div class="timer-ring" style="margin:0 auto 10px">
           <svg width="150" height="150" viewBox="0 0 150 150">
             <circle class="tr-bg" cx="75" cy="75" r="62"/>
             <g transform="rotate(-90 75 75)">
@@ -645,16 +688,37 @@
             <text class="tr-text" id="rec-text" x="75" y="75" style="fill:#1a7f37">0:00</text>
           </svg>
         </div>
-        <p id="rec-next-label" style="font-size:13px;color:#555;margin-bottom:16px"></p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+          <button class="btn btn-ghost btn-sm" id="btn-rec-minus15" type="button" style="min-width:70px">-15s</button>
+          <button class="btn btn-ghost btn-sm" id="btn-rec-plus30" type="button" style="min-width:70px">+30s</button>
+        </div>
+        <p id="rec-next-label" style="font-size:13px;color:#555;margin-bottom:14px"></p>
         <button class="btn btn-ghost btn-full" id="btn-skip-rec">Salta recupero →</button>
       </div>
     </div>
 
     <div id="end-wrap" style="display:none;margin-top:14px">
       <div class="card sess-end">
-        <div class="end-ico">🏁</div>
+        <div class="end-ico">🏆</div>
         <h3>Allenamento completato!</h3>
-        <p id="end-msg"></p>
+        <p id="end-msg" style="color:#555;margin-bottom:12px"></p>
+        <div id="end-stats-box" style="margin:16px 0;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:8px;padding:14px">
+          <div style="display:flex;justify-content:space-around;text-align:center;gap:8px">
+            <div>
+              <div id="es-volume" style="font-size:18px;font-weight:bold;color:#d0021b">0 kg</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Volume Totale</div>
+            </div>
+            <div>
+              <div id="es-sets" style="font-size:18px;font-weight:bold;color:#1c1c1c">0</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Set Fatti</div>
+            </div>
+            <div>
+              <div id="es-durata" style="font-size:18px;font-weight:bold;color:#1c1c1c">0 min</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Durata</div>
+            </div>
+          </div>
+          <div id="es-fun-fact" style="margin-top:10px;font-size:12px;color:#4a5568;text-align:center;font-style:italic"></div>
+        </div>
         <button class="btn btn-red btn-full" id="btn-fine">Torna alle schede</button>
       </div>
     </div>
@@ -718,8 +782,15 @@
         <input class="inp" type="number" id="mb-giri" min="1" max="20" value="3" inputmode="numeric" />
       </div>
       <div id="mb-recupero-wrap">
-        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px" id="mb-recupero-label">Recupero tra gli esercizi (secondi)</label>
-        <input class="inp" type="number" id="mb-recupero" min="0" max="600" value="30" inputmode="numeric" />
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:5px" id="mb-recupero-label">Recupero tra le serie (secondi · 0 = nessun recupero)</label>
+        <input class="inp" type="number" id="mb-recupero" min="0" max="600" value="90" inputmode="numeric" placeholder="Es. 90 (0 = nessun recupero)" />
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rec-set-0" style="padding:0 8px;min-height:32px">0s (Nessuno)</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rec-set-30" style="padding:0 8px;min-height:32px">30s</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rec-set-60" style="padding:0 8px;min-height:32px">60s</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rec-set-90" style="padding:0 8px;min-height:32px">90s</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rec-set-120" style="padding:0 8px;min-height:32px">120s</button>
+        </div>
       </div>
     </div>
     <div class="modal-row">
@@ -731,34 +802,91 @@
 
 <div class="chart-tooltip" id="chart-tooltip"></div>
 
+<script>
+// Safe alert fallback for iframe environments where native alert may be blocked
+(function() {
+  const origAlert = window.alert;
+  window.alert = function(msg) {
+    try {
+      let toast = document.getElementById('gt-alert-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'gt-alert-toast';
+        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1c1c;color:#fff;border-left:4px solid #d0021b;padding:12px 18px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;max-width:90%;transition:opacity 0.3s;pointer-events:auto;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      toast.style.display = 'block';
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(function() {
+        toast.style.opacity = '0';
+        setTimeout(function() { toast.style.display = 'none'; }, 300);
+      }, 3500);
+    } catch(e) {
+      if (origAlert) origAlert(msg);
+    }
+  };
+})();
+</script>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
          collection, doc, onSnapshot, addDoc, updateDoc,
-         deleteDoc, query, orderBy, serverTimestamp, writeBatch }
+         deleteDoc, query, orderBy, serverTimestamp, writeBatch, getDocFromServer }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* ─── Firebase ─── */
-const app = initializeApp({
-  apiKey:            "AIzaSyB60V4Jp6Rk9I8B1tb9033iP3iSrv2oAxY",
-  authDomain:        "gym-tracker-a5f1d.firebaseapp.com",
-  projectId:         "gym-tracker-a5f1d",
-  storageBucket:     "gym-tracker-a5f1d.firebasestorage.app",
-  messagingSenderId: "712965008242",
-  appId:             "1:712965008242:web:d9a347472821d80626cbeb"
-});
-// cache offline: le schede/esercizi già caricati restano disponibili senza rete,
-// e le scritture vengono messe in coda e sincronizzate da sole al ritorno della connessione
+/* ─── Firebase Config & Initialization ─── */
+let firebaseConfig;
+try {
+  const resp = await fetch('/firebase-applet-config.json');
+  if (resp.ok) {
+    firebaseConfig = await resp.json();
+  }
+} catch (e) {
+  console.warn('Could not fetch /firebase-applet-config.json, using fallback configuration', e);
+}
+
+if (!firebaseConfig) {
+  firebaseConfig = {
+    projectId: "gym-tracker-a5f1d",
+    appId: "1:712965008242:web:d9a347472821d80626cbeb",
+    apiKey: "AIzaSyB60V4Jp6Rk9I8B1tb9033iP3iSrv2oAxY",
+    authDomain: "gym-tracker-a5f1d.firebaseapp.com",
+    storageBucket: "gym-tracker-a5f1d.firebasestorage.app",
+    messagingSenderId: "712965008242"
+  };
+}
+
+const app = initializeApp(firebaseConfig);
+
+const firestoreSettings = {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+};
+
 let db;
 try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
+  db = firebaseConfig.firestoreDatabaseId
+    ? initializeFirestore(app, firestoreSettings, firebaseConfig.firestoreDatabaseId)
+    : initializeFirestore(app, firestoreSettings);
 } catch (err) {
-  // fallback se la persistenza non è disponibile (es. modalità privata, un altro tab già la usa)
   console.warn('Cache offline non disponibile, uso Firestore in memoria:', err);
-  db = initializeFirestore(app, {});
+  db = firebaseConfig.firestoreDatabaseId
+    ? initializeFirestore(app, {}, firebaseConfig.firestoreDatabaseId)
+    : initializeFirestore(app, {});
 }
+
+// Test connectivity
+(async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'users', 'conn-check'));
+  } catch (error) {
+    if (error && error.message && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+})();
 
 /* ─── Collezione globale profili ─── */
 const colUsers = collection(db,'users');
@@ -1297,21 +1425,24 @@ function renderBlocchi() {
     const hnm=el('span'); hnm.className='bh-name'; hnm.textContent=b.name;
     const hgiri=el('span'); hgiri.className='bh-giri';
     if (b.tipo==='serie') {
-      hgiri.textContent=`Serie · recupero ${b.recupero!=null?b.recupero:90}s`;
+      hgiri.textContent = (b.recupero != null && b.recupero > 0)
+        ? `Serie · recupero ${b.recupero}s`
+        : `Serie · senza recupero (0s)`;
     } else {
       hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'} · senza recupero`;
     }
-    const hup=el('button'); hup.type='button'; hup.className='bh-del'; hup.innerHTML=ICO.up;
-    hup.title='Sposta su'; hup.disabled=bi===0; hup.style.opacity=bi===0?'.3':'1';
+    const hup=el('button'); hup.type='button'; hup.className='bh-btn'; hup.innerHTML=ICO.up;
+    hup.title='Sposta blocco su'; hup.disabled=bi===0; hup.style.opacity=bi===0?'.25':'1';
     hup.addEventListener('click',()=>{ [editBlocchi[bi-1],editBlocchi[bi]]=[editBlocchi[bi],editBlocchi[bi-1]]; renderBlocchi(); });
-    const hdown=el('button'); hdown.type='button'; hdown.className='bh-del'; hdown.innerHTML=ICO.down;
-    hdown.title='Sposta giù'; hdown.disabled=bi===editBlocchi.length-1; hdown.style.opacity=bi===editBlocchi.length-1?'.3':'1';
+    const hdown=el('button'); hdown.type='button'; hdown.className='bh-btn'; hdown.innerHTML=ICO.down;
+    hdown.title='Sposta blocco giù'; hdown.disabled=bi===editBlocchi.length-1; hdown.style.opacity=bi===editBlocchi.length-1?'.25':'1';
     hdown.addEventListener('click',()=>{ [editBlocchi[bi+1],editBlocchi[bi]]=[editBlocchi[bi],editBlocchi[bi+1]]; renderBlocchi(); });
-    const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
-    hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
-    const hedit=el('button'); hedit.type='button'; hedit.className='bh-del'; hedit.innerHTML=ICO.pencil;
+    const hedit=el('button'); hedit.type='button'; hedit.className='bh-btn'; hedit.innerHTML=ICO.pencil;
     hedit.title='Modifica blocco';
     hedit.addEventListener('click',()=>openBloccoModal(bi));
+    const hdel=el('button'); hdel.type='button'; hdel.className='bh-btn bh-del'; hdel.textContent='✕';
+    hdel.title='Elimina blocco';
+    hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
     hdr.append(hnm,hgiri,hup,hdown,hedit,hdel);
 
     // body
@@ -1333,17 +1464,18 @@ function renderBlocchi() {
         : item.tipo==='tempo'
           ? `⏱ ${fmtSec(item.durata||60)}`
           : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
-      const eup=el('button'); eup.type='button'; eup.className='bei-del'; eup.innerHTML=ICO.up;
-      eup.title='Sposta su'; eup.disabled=ei===0; eup.style.opacity=ei===0?'.3':'1';
+      const eup=el('button'); eup.type='button'; eup.className='bei-btn'; eup.innerHTML=ICO.up;
+      eup.title='Sposta esercizio su'; eup.disabled=ei===0; eup.style.opacity=ei===0?'.25':'1';
       eup.addEventListener('click',()=>{ [b.esercizi[ei-1],b.esercizi[ei]]=[b.esercizi[ei],b.esercizi[ei-1]]; renderBlocchi(); });
-      const edown=el('button'); edown.type='button'; edown.className='bei-del'; edown.innerHTML=ICO.down;
-      edown.title='Sposta giù'; edown.disabled=ei===b.esercizi.length-1; edown.style.opacity=ei===b.esercizi.length-1?'.3':'1';
+      const edown=el('button'); edown.type='button'; edown.className='bei-btn'; edown.innerHTML=ICO.down;
+      edown.title='Sposta esercizio giù'; edown.disabled=ei===b.esercizi.length-1; edown.style.opacity=ei===b.esercizi.length-1?'.25':'1';
       edown.addEventListener('click',()=>{ [b.esercizi[ei+1],b.esercizi[ei]]=[b.esercizi[ei],b.esercizi[ei+1]]; renderBlocchi(); });
-      const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
-      del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
-      const editIt=el('button'); editIt.type='button'; editIt.className='bei-del'; editIt.innerHTML=ICO.pencil;
-      editIt.title='Modifica esercizio';
+      const editIt=el('button'); editIt.type='button'; editIt.className='bei-btn'; editIt.innerHTML=ICO.pencil;
+      editIt.title='Modifica parametri esercizio';
       editIt.addEventListener('click',()=>{ editingEx={bi,ei}; renderBlocchi(); });
+      const del=el('button'); del.type='button'; del.className='bei-btn bei-del'; del.textContent='✕';
+      del.title='Rimuovi esercizio dal blocco';
+      del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
       li.append(nm,tag,eup,edown,editIt,del); ul.appendChild(li);
     });
 
@@ -1498,8 +1630,8 @@ $('mb-save').addEventListener('click',()=>{
   const giri=tipo==='serie'?1:(parseInt($('mb-giri').value)||3);
   let recupero=null;
   if (tipo==='serie') {
-    const recParsed=parseInt($('mb-recupero').value);
-    recupero=isNaN(recParsed)?90:recParsed;
+    const recParsed=parseInt($('mb-recupero').value, 10);
+    recupero=isNaN(recParsed)?90:Math.max(0, recParsed);
   }
   if (editingBloccoIdx!=null) {
     const b=editBlocchi[editingBloccoIdx];
@@ -1511,6 +1643,13 @@ $('mb-save').addEventListener('click',()=>{
   renderBlocchi();
   $('modal-blocco').classList.remove('open');
 });
+
+// Preset rapidi per il recupero nel modal
+$('btn-rec-set-0')?.addEventListener('click',()=>{ $('mb-recupero').value=0; });
+$('btn-rec-set-30')?.addEventListener('click',()=>{ $('mb-recupero').value=30; });
+$('btn-rec-set-60')?.addEventListener('click',()=>{ $('mb-recupero').value=60; });
+$('btn-rec-set-90')?.addEventListener('click',()=>{ $('mb-recupero').value=90; });
+$('btn-rec-set-120')?.addEventListener('click',()=>{ $('mb-recupero').value=120; });
 
 /* ════════════════════ ALLENAMENTO ════════════════════ */
 const sessKey = () => `gymtracker_sess_${currentUser?.id}`;
@@ -1566,24 +1705,73 @@ let sess=null;
 
 /* ── Wake Lock: tiene lo schermo acceso durante l'allenamento ── */
 let wakeLock=null;
+let wakeLockEnabled=true;
+
+function updateWakeLockUI() {
+  const btn = $('btn-wakelock');
+  const lbl = $('wl-label');
+  if (!btn || !lbl) return;
+  if (wakeLock) {
+    btn.className = 'wakelock-btn active';
+    lbl.textContent = 'Schermo ON';
+    btn.title = 'Schermo sempre attivo: clicca per disattivare';
+  } else {
+    btn.className = 'wakelock-btn';
+    lbl.textContent = wakeLockEnabled ? 'Attiva Schermo' : 'Schermo OFF';
+    btn.title = 'Schermo normale: clicca per tenere lo schermo sempre attivo';
+  }
+}
+
 async function requestWakeLock() {
+  if (!wakeLockEnabled) { updateWakeLockUI(); return; }
   try {
     if ('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+      wakeLock.addEventListener('release', ()=>{
+        wakeLock=null;
+        updateWakeLockUI();
+      });
+      updateWakeLockUI();
     }
   } catch (err) {
-    // alcuni browser/contesti negano il wake lock: l'app funziona comunque, solo senza schermo sempre acceso
-    console.warn('Wake Lock non disponibile:', err);
+    console.warn('Wake Lock non disponibile o bloccato dal browser:', err);
+    updateWakeLockUI();
   }
 }
+
 function releaseWakeLock() {
-  if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock=null; }
+  if (wakeLock) {
+    wakeLock.release().catch(()=>{});
+    wakeLock = null;
+  }
+  updateWakeLockUI();
 }
-// se lo schermo viene bloccato e poi sbloccato, e siamo ancora in allenamento, richiedi di nuovo il wake lock
-document.addEventListener('visibilitychange', ()=>{
-  if (document.visibilityState==='visible' && sess && !wakeLock) requestWakeLock();
+
+// Toggle manuale dal pulsante nella schermata
+$('btn-wakelock')?.addEventListener('click', async (e)=>{
+  e.stopPropagation();
+  if (wakeLock) {
+    wakeLockEnabled = false;
+    releaseWakeLock();
+  } else {
+    wakeLockEnabled = true;
+    await requestWakeLock();
+  }
 });
+
+// Se l'app torna visibile durante l'allenamento, richiedi wakeLock
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState==='visible' && sess && !wakeLock && wakeLockEnabled) {
+    requestWakeLock();
+  }
+});
+
+// Al tocco durante la sessione, se wakeLock era caduto, tenta ripristino
+$('al-session')?.addEventListener('click', ()=>{
+  if (sess && !wakeLock && wakeLockEnabled && document.visibilityState==='visible') {
+    requestWakeLock();
+  }
+}, { passive: true });
 
 /* ── Beep audio: fallback per la vibrazione, che iOS Safari non supporta ── */
 let audioCtx=null;
@@ -1606,9 +1794,75 @@ function playBeep(times=1) {
     console.warn('Audio non disponibile:', err);
   }
 }
+
+function playPRFanfare() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (arpeggio vittoria)
+    const t0 = audioCtx.currentTime;
+    notes.forEach((freq, idx) => {
+      const startT = t0 + idx * 0.11;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startT);
+      gain.gain.setValueAtTime(0.0001, startT);
+      gain.gain.exponentialRampToValueAtTime(0.35, startT + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startT + (idx === notes.length - 1 ? 0.35 : 0.1));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(startT);
+      osc.stop(startT + 0.38);
+    });
+  } catch (e) {}
+}
+
+function showPRBanner(title, desc) {
+  let b = document.getElementById('pr-celebration-toast');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'pr-celebration-toast';
+    b.className = 'pr-banner';
+    b.innerHTML = '<div class="pr-banner-title"></div><div class="pr-banner-desc"></div>';
+    document.body.appendChild(b);
+  }
+  b.querySelector('.pr-banner-title').textContent = title;
+  b.querySelector('.pr-banner-desc').textContent = desc;
+  b.classList.add('show');
+  clearTimeout(b._timer);
+  b._timer = setTimeout(() => {
+    b.classList.remove('show');
+  }, 4200);
+}
+
+function checkPR(exId, weight, reps) {
+  if (!weight || !reps || weight <= 0 || reps <= 0) return;
+  const curSessId = sess ? `${sess.sid}_${sess.ts}` : null;
+  const exLogs = logs.filter(l => l.exerciseId === exId && l.reps && l.weight != null && l.sessionId !== curSessId);
+  if (!exLogs.length) return; // Prima volta che si esegue: niente record precedente
+  
+  const current1RM = weight * (1 + reps / 30);
+  const maxPrev1RM = Math.max(...exLogs.map(l => l.weight * (1 + l.reps / 30)));
+  const maxPrevWeight = Math.max(...exLogs.map(l => l.weight));
+  
+  const ex = exercises.find(e => e.id === exId);
+  const exName = ex?.name || 'Esercizio';
+  
+  if (current1RM > maxPrev1RM * 1.015) {
+    playPRFanfare();
+    if (navigator.vibrate) navigator.vibrate([150, 70, 150, 70, 250]);
+    showPRBanner('🏆 NUOVO RECORD PERSONALE!', `${exName}: ${weight} kg × ${reps} reps (1RM stimato: ${Math.round(current1RM)} kg)!`);
+  } else if (weight > maxPrevWeight && reps >= 3) {
+    playPRFanfare();
+    if (navigator.vibrate) navigator.vibrate([150, 70, 250]);
+    showPRBanner('🔥 NUOVO MASSIMO DI CARICO!', `${exName}: ${weight} kg sollevati!`);
+  }
+}
+
 function notifyEnd(pattern=[300,100,300]) {
-  if (navigator.vibrate) navigator.vibrate(pattern); // funziona su Android
-  playBeep(pattern.length>2?2:1); // funziona ovunque, incluso iPhone
+  if (navigator.vibrate) navigator.vibrate(pattern);
+  playBeep(pattern.length>2?2:1);
 }
 
 $('btn-inizia').addEventListener('click',()=>{
@@ -1748,7 +2002,7 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
     return `<div class="hint-box">${targetRow}${pesoRow}</div>`;
   }
 
-  // ha storico — mostra solo ultima volta, nessun suggerimento progressione
+  // ha storico — mostra ultima volta + obiettivo psicologico per batterti
   const lastSess = ll[0].sessionId;
   const sessLogs = ll.filter(l=>l.sessionId===lastSess);
   const repsArr  = sessLogs.map(l=>l.reps).filter(Boolean);
@@ -1760,11 +2014,27 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
   const w=wArr.length?wArr[0]:null;
   const ultimaVal=w!=null?`${repsStr} × ${w} kg`:repsStr;
 
+  let goalText = '';
+  if (w != null) {
+    if (repsTarget && maxR >= repsTarget) {
+      const nextW = w >= 50 ? w + 2.5 : w + 1;
+      goalText = `🔥 Prova +1-2 kg (${nextW} kg) o fai ${maxR + 1} reps!`;
+    } else {
+      goalText = `🔥 Batti l'ultima volta: punta a ${maxR + 1} reps con ${w} kg!`;
+    }
+  } else {
+    goalText = `🔥 Obiettivo: prova ${maxR + 1} reps!`;
+  }
+
   return `<div class="hint-box">
     ${targetRow}
     <div class="hint-row">
       <span class="hr-label">Ultima volta</span>
       <span class="hr-val">${ultimaVal}</span>
+    </div>
+    <div class="hint-row hint-ok">
+      <span class="hr-label">Obiettivo</span>
+      <span class="hr-val">${goalText}</span>
     </div>
   </div>`;
 }
@@ -1792,13 +2062,17 @@ function renderStep() {
 
   // step di recupero
   if (step.isRecupero) {
+    if (!step.durata || step.durata <= 0) {
+      advance();
+      return;
+    }
     const nextId=step.nextExId||step.exId;
     const ex=exercises.find(e=>e.id===nextId);
     $('rec-next-label').textContent = step.tipoBlocco==='serie'
       ? `Prossima: ${ex?.name||''} — Serie ${step.giro+1}/${step.giriTot}`
       : `Prossimo: ${ex?.name||''}`;
     $('recupero-wrap').style.display='block';
-    initRecupero(step.durata||30);
+    initRecupero(step.durata);
     return;
   }
 
@@ -1865,6 +2139,7 @@ async function doNext() {
       clientTs:Date.now(), createdAt:serverTimestamp()
     });
     sess.results.push({stepIdx:sess.cur,reps,weight,skipped:false});
+    checkPR(step.exId, weight, reps);
   } else if (step.tipo==='tempo') {
     stopTimer();
     syncWait();
@@ -1960,8 +2235,33 @@ function showEnd() {
   $('btn-skip').style.display='none';
   $('btn-next').style.display='none';
   $('btn-annulla-al').style.display='none';
-  const tot=sess.results.filter(r=>!r.skipped&&r.reps).length;
-  $('end-msg').textContent=`${tot} set registrati. Ottimo lavoro!`;
+
+  const setsDone = sess.results.filter(r=>!r.skipped&&r.reps).length;
+  let totalVolume = 0;
+  sess.results.forEach(r => {
+    if (!r.skipped && r.reps && r.weight) {
+      totalVolume += (r.reps * r.weight);
+    }
+  });
+
+  const elapsedSec = Math.round((Date.now() - (sess.ts || Date.now())) / 1000);
+  const elapsedMin = Math.max(1, Math.round(elapsedSec / 60));
+
+  $('end-msg').textContent = `${setsDone} serie registrate con successo. Grande sessione!`;
+  $('es-volume').textContent = totalVolume > 0 ? `${totalVolume.toLocaleString('it-IT')} kg` : '—';
+  $('es-sets').textContent = setsDone;
+  $('es-durata').textContent = `${elapsedMin} min`;
+
+  let funFact = '';
+  if (totalVolume >= 5000) {
+    funFact = `🔥 Prestazione enorme! Hai sollevato più di ${(totalVolume/1000).toFixed(1)} tonnellate!`;
+  } else if (totalVolume >= 2000) {
+    funFact = `💪 Grande lavoro: hai sollevato ben ${(totalVolume/1000).toFixed(1)} tonnellate!`;
+  } else if (totalVolume > 0) {
+    funFact = `👏 Ottimo tonnellaggio totale completato oggi!`;
+  }
+  $('es-fun-fact').textContent = funFact;
+
   $('end-wrap').style.display='block';
 }
 
@@ -2004,39 +2304,90 @@ $('btn-annulla-al').addEventListener('click', cancelWorkout);
 /* ════════════════════ TIMER RECUPERO ════════════════════ */
 const CIRC_REC=389.6;
 let recTotal=0, recLeft=0, recInterval=null, recEndAt=0;
+let lastCountdownBeep=-1;
 
 function initRecupero(sec) {
   stopRecupero();
+  if (!sec || sec <= 0) {
+    advance();
+    return;
+  }
   recTotal=sec; recLeft=sec;
+  lastCountdownBeep=-1;
   updateRecUI();
 }
 function updateRecUI() {
-  const pct=recLeft/recTotal;
+  const pct=recTotal > 0 ? recLeft/recTotal : 0;
   const circle=$('rec-circle'), text=$('rec-text');
   if (!circle) return;
   circle.style.strokeDashoffset=CIRC_REC*(1-pct);
   text.textContent=fmtTimer(recLeft);
   if (recLeft<=0) { text.textContent='Via!'; }
 }
+
+function playCountdownPip(freq = 523.25, duration = 0.08) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.04);
+  } catch(e) {}
+}
+
 function startRecupero() {
   if (recInterval) return;
-  // il countdown si basa sull'orario reale di fine, non su un semplice conteggio a scalare:
-  // così resta preciso anche se il browser rallenta i timer in background
   recEndAt = Date.now() + recLeft*1000;
   recInterval=setInterval(()=>{
     recLeft = Math.max(0, Math.round((recEndAt-Date.now())/1000));
     updateRecUI();
+
+    // Segnale sonoro negli ultimi 3 secondi (3... 2... 1... VIA!)
+    if (recLeft === 3 && lastCountdownBeep !== 3) {
+      playCountdownPip(523.25, 0.08); // C5
+      lastCountdownBeep = 3;
+    } else if (recLeft === 2 && lastCountdownBeep !== 2) {
+      playCountdownPip(523.25, 0.08); // C5
+      lastCountdownBeep = 2;
+    } else if (recLeft === 1 && lastCountdownBeep !== 1) {
+      playCountdownPip(523.25, 0.08); // C5
+      lastCountdownBeep = 1;
+    }
+
     if (recLeft<=0) {
       stopRecupero();
+      playCountdownPip(880, 0.35); // A5 ("Via!")
       notifyEnd([200,100,200]);
-      // avanza automaticamente dopo 1 secondo
+      // avanza automaticamente dopo breve pausa
       setTimeout(()=>{
         if ($('recupero-wrap').style.display!=='none') advance();
-      },1000);
+      },750);
     }
-  },250);
+  },200);
 }
 function stopRecupero() { clearInterval(recInterval); recInterval=null; }
+
+// Quick buttons +30s / -15s
+$('btn-rec-plus30')?.addEventListener('click', ()=>{
+  recEndAt += 30 * 1000;
+  recTotal += 30;
+  recLeft = Math.max(0, Math.round((recEndAt - Date.now()) / 1000));
+  updateRecUI();
+});
+$('btn-rec-minus15')?.addEventListener('click', ()=>{
+  recEndAt = Math.max(Date.now() + 2000, recEndAt - 15 * 1000);
+  recLeft = Math.max(0, Math.round((recEndAt - Date.now()) / 1000));
+  updateRecUI();
+});
 
 // avvia il recupero automaticamente quando appare la schermata
 const recObserver=new MutationObserver(()=>{
@@ -2398,7 +2749,11 @@ $('btn-pdf-storico').addEventListener('click', () => {
     // su iOS la stampa (e quindi l'export PDF) non funziona nelle app aperte dall'icona Home:
     // si apre Safari, dove la stampa funziona normalmente
     alert('Su iPhone la stampa non funziona nell\'app aperta dalla Home. Si aprirà Safari: da lì premi di nuovo "Esporta PDF", poi nella finestra di stampa apri l\'anteprima a schermo intero e usa l\'icona di condivisione → "Salva su File" (PDF).');
-    window.open(location.href, '_blank');
+    try {
+      window.open(location.href, '_blank');
+    } catch (e) {
+      console.warn('Cannot open window in iframe environment:', e);
+    }
     return;
   }
   if (isIOS) {

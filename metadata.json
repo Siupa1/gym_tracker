@@ -1,0 +1,7 @@
+{
+  "name": "GymTracker",
+  "description": "Tieni traccia delle tue schede e dei tuoi allenamenti in palestra",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

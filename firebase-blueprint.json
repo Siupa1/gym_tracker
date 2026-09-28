@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "user": {
+      "title": "UserProfile",
+      "description": "User profile containing display name and color tag",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "The display name of the user profile",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "colore": {
+          "type": "string",
+          "description": "Hex color code for the profile avatar",
+          "minLength": 4,
+          "maxLength": 10
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the profile was created"
+        }
+      },
+      "required": ["nome", "colore"]
+    },
+    "exercise": {
+      "title": "Exercise",
+      "description": "Library exercise available for routines and tracking",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the exercise",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "image": {
+          "type": "string",
+          "description": "Base64 data or image URL for the exercise icon"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the exercise was created"
+        }
+      },
+      "required": ["name"]
+    },
+    "scheda": {
+      "title": "Scheda",
+      "description": "Workout routine template with exercise blocks",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the routine",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "blocchi": {
+          "type": "array",
+          "description": "Ordered exercise blocks/circuits"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when routine was created"
+        }
+      },
+      "required": ["name", "blocchi"]
+    },
+    "log": {
+      "title": "WorkoutLog",
+      "description": "Logged performance for a single set or timed exercise",
+      "type": "object",
+      "properties": {
+        "exerciseId": {
+          "type": "string",
+          "description": "ID of the performed exercise",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "reps": {
+          "type": "number",
+          "description": "Number of repetitions performed"
+        },
+        "weight": {
+          "type": "number",
+          "description": "Weight in kg used for the set"
+        },
+        "durata": {
+          "type": "number",
+          "description": "Duration in seconds for timed exercises"
+        },
+        "nota": {
+          "type": "string",
+          "description": "Optional athlete notes",
+          "maxLength": 500
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Session identifier grouping the workout sets",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "clientTs": {
+          "type": "number",
+          "description": "Client timestamp when set was completed"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when log was created"
+        }
+      },
+      "required": ["exerciseId", "sessionId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles"
+    },
+    "/exercises/{exerciseId}": {
+      "schema": "exercise",
+      "description": "Global exercise catalog"
+    },
+    "/users/{userId}/schede/{schedaId}": {
+      "schema": "scheda",
+      "description": "User workout routines"
+    },
+    "/users/{userId}/logs/{logId}": {
+      "schema": "log",
+      "description": "User workout logs"
+    }
+  }
+}

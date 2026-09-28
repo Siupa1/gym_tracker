@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['nome', 'colore'])
+        && data.nome is string && data.nome.size() >= 1 && data.nome.size() <= 60
+        && data.colore is string && data.colore.size() >= 4 && data.colore.size() <= 10;
+    }
+
+    function isValidExercise(data) {
+      return data.keys().hasAll(['name'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && (!('image' in data) || data.image == null || (data.image is string && data.image.size() <= 500000));
+    }
+
+    function isValidScheda(data) {
+      return data.keys().hasAll(['name', 'blocchi'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.blocchi is list;
+    }
+
+    function isValidLog(data) {
+      return data.keys().hasAll(['exerciseId', 'sessionId'])
+        && data.exerciseId is string && data.exerciseId.size() >= 1 && data.exerciseId.size() <= 128
+        && data.sessionId is string && data.sessionId.size() >= 1 && data.sessionId.size() <= 128
+        && (!('nota' in data) || data.nota == null || (data.nota is string && data.nota.size() <= 1000));
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow get, list: if true;
+      allow create: if isValidId(userId) && isValidUser(incoming());
+      allow update: if isValidId(userId) && isValidUser(incoming());
+      allow delete: if isValidId(userId);
+
+      match /schede/{schedaId} {
+        allow get, list: if isValidId(userId);
+        allow create: if isValidId(userId) && isValidId(schedaId) && isValidScheda(incoming());
+        allow update: if isValidId(userId) && isValidId(schedaId) && isValidScheda(incoming());
+        allow delete: if isValidId(userId) && isValidId(schedaId);
+      }
+
+      match /logs/{logId} {
+        allow get, list: if isValidId(userId);
+        allow create: if isValidId(userId) && isValidId(logId) && isValidLog(incoming());
+        allow update: if isValidId(userId) && isValidId(logId) && isValidLog(incoming());
+        allow delete: if isValidId(userId) && isValidId(logId);
+      }
+    }
+
+    match /exercises/{exerciseId} {
+      allow get, list: if true;
+      allow create: if isValidId(exerciseId) && isValidExercise(incoming());
+      allow update: if isValidId(exerciseId) && isValidExercise(incoming());
+      allow delete: if isValidId(exerciseId);
+    }
+  }
+}
