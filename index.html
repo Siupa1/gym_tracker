@@ -1230,7 +1230,7 @@ function renderBlocchi() {
     const selEx=el('select'); selEx.className='inp';
     const optVuota=el('option'); optVuota.value=''; optVuota.textContent='Scegli esercizio…';
     selEx.appendChild(optVuota);
-    exercises.forEach(ex=>{
+    [...exercises].sort((a,b)=>(a.name||'').localeCompare(b.name||'','it',{sensitivity:'base'})).forEach(ex=>{
       const o=el('option'); o.value=ex.id; o.textContent=ex.name; selEx.appendChild(o);
     });
 
