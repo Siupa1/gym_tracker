@@ -28,14 +28,16 @@
     body { padding-bottom: 80px; }
 
     /* ─── HEADER ─── */
+    :root { --uc: #d0021b; }
     header {
+      box-shadow: inset 0 -3px 0 var(--uc);
       background: #1c1c1c; color: #fff;
       padding: 0 16px; height: 54px;
       display: flex; align-items: center; gap: 12px;
       position: sticky; top: 0; z-index: 100;
     }
     .logo {
-      background: #d0021b; color: #fff; font-weight: bold; font-size: 18px;
+      background: var(--uc); color: #fff; font-weight: bold; font-size: 18px;
       width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
@@ -57,7 +59,7 @@
       /* area tap generosa */
       min-height: 44px;
     }
-    nav.tabs button.active { color: #fff; border-bottom-color: #d0021b; }
+    nav.tabs button.active { color: #fff; border-bottom-color: var(--uc); }
 
     /* ─── PAGE ─── */
     .page { display: none; padding: 14px; }
@@ -365,10 +367,21 @@
     }
     .profilo-card:active { background: #d0021b; border-color: #d0021b; }
     .profilo-avatar {
+      position: relative; overflow: hidden;
       width: 46px; height: 46px; background: #d0021b; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 20px; font-weight: bold; color: #fff; flex-shrink: 0;
       text-transform: uppercase;
+    }
+    .profilo-avatar input[type=color] {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer; border: 0; padding: 0;
+    }
+    .profilo-hint { color: #777 !important; font-size: 11px !important; margin: -4px 0 14px !important; }
+    .ps-color-row { display: flex; align-items: center; gap: 10px; color: #aaa; font-size: 13px; }
+    .ps-color-row input[type=color] {
+      width: 52px; height: 40px; border: 1px solid #444; background: #2a2a2a;
+      padding: 2px; cursor: pointer;
     }
     .profilo-nome { font-size: 16px; color: #fff; font-weight: bold; flex: 1; }
     .profilo-del  {
@@ -391,10 +404,11 @@
       display: none; align-items: center; gap: 6px;
       background: #2a2a2a; border: 1px solid #444;
       padding: 4px 10px; cursor: pointer; min-height: 34px;
+      border-color: var(--uc);
     }
-    #user-badge:active { border-color: #d0021b; }
+    #user-badge:active { border-color: #fff; }
     #user-badge .ub-avatar {
-      width: 24px; height: 24px; background: #d0021b; border-radius: 50%;
+      width: 24px; height: 24px; background: var(--uc); border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: bold; color: #fff; text-transform: uppercase;
       flex-shrink: 0;
@@ -431,10 +445,14 @@
   <div class="ps-logo">G</div>
   <h2>GYM TRACKER</h2>
   <p>Scegli il tuo profilo</p>
+  <p class="profilo-hint">Tocca il cerchio colorato per cambiare il colore di un profilo</p>
   <div id="profili-lista" style="width:100%;max-width:360px"></div>
   <div class="ps-new-form">
     <input type="text" id="inp-nuovo-profilo" placeholder="Nuovo profilo… (es. Marco)"
            maxlength="30" autocomplete="off" autocorrect="off" spellcheck="false" />
+    <label class="ps-color-row">Colore del profilo
+      <input type="color" id="inp-nuovo-colore" value="#d0021b" />
+    </label>
     <button class="btn btn-red btn-full" id="btn-crea-profilo">+ Crea profilo</button>
   </div>
 </div>
@@ -770,6 +788,21 @@ function uid() { return Date.now().toString(36)+Math.random().toString(36).slice
 
 /* ════════════════════ PROFILI ════════════════════ */
 
+/* ── colori profilo ── */
+const PALETTE = ['#d0021b','#1e88e5','#43a047','#fb8c00','#8e24aa','#00acc1','#f4511e','#c0ca33','#ec407a','#6d4c41'];
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+function colorOf(p) {
+  if (p?.colore && HEX_RE.test(p.colore)) return p.colore;
+  let h = 0; const id = p?.id || p?.nome || '';
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+function applyUserColor(c) { document.documentElement.style.setProperty('--uc', c); }
+function nextFreeColor() {
+  const used = new Set(profili.map(p => colorOf(p).toLowerCase()));
+  return PALETTE.find(c => !used.has(c)) || PALETTE[profili.length % PALETTE.length];
+}
+
 /* lista profili in cache locale */
 let profili = [];
 let unsubProfili = null;
@@ -779,7 +812,17 @@ function renderProfili() {
   cont.innerHTML = '';
   profili.forEach(p => {
     const card = el('div'); card.className = 'profilo-card';
+    const col = colorOf(p);
+    card.style.borderLeft = `5px solid ${col}`;
     const av = el('div'); av.className = 'profilo-avatar'; av.textContent = p.nome.charAt(0);
+    av.style.background = col;
+    const ci = el('input'); ci.type = 'color'; ci.value = col; ci.title = 'Cambia colore';
+    ci.addEventListener('click', e => e.stopPropagation());
+    ci.addEventListener('change', async () => {
+      try { await updateDoc(doc(db,'users',p.id), { colore: ci.value }); }
+      catch (err) { alert('Impossibile cambiare il colore: controlla le regole Firestore (serve permettere l\'update del campo "colore").'); }
+    });
+    av.appendChild(ci);
     const nm = el('span'); nm.className = 'profilo-nome'; nm.textContent = p.nome;
     const del = el('button'); del.className = 'profilo-del'; del.textContent = '✕';
     del.addEventListener('click', async e => {
@@ -798,15 +841,16 @@ function renderProfili() {
   });
 }
 
-async function creaProfilo(nome) {
+async function creaProfilo(nome, colore) {
   nome = nome.trim();
   if (!nome) return;
   if (profili.some(p => p.nome.toLowerCase() === nome.toLowerCase())) {
     alert('Profilo già esistente.'); return;
   }
   syncWait();
-  const ref = await addDoc(colUsers, { nome, createdAt: serverTimestamp() });
-  selezionaProfilo({ id: ref.id, nome });
+  colore = HEX_RE.test(colore || '') ? colore : nextFreeColor();
+  const ref = await addDoc(colUsers, { nome, colore, createdAt: serverTimestamp() });
+  selezionaProfilo({ id: ref.id, nome, colore });
 }
 
 function selezionaProfilo(p) {
@@ -815,6 +859,7 @@ function selezionaProfilo(p) {
   localStorage.setItem('gymtracker_nome', p.nome);
 
   // aggiorna badge header
+  applyUserColor(colorOf(p));
   $('ub-avatar').textContent = p.nome.charAt(0).toUpperCase();
   $('ub-name').textContent   = p.nome;
   $('user-badge').style.display = 'flex';
@@ -866,13 +911,18 @@ function inizializzaUtente(uid) {
 unsubProfili = onSnapshot(query(colUsers, orderBy('createdAt')), snap => {
   profili = snap.docs.map(d => ({id:d.id,...d.data()}));
   renderProfili();
+  if (!$('inp-nuovo-colore')._touched) $('inp-nuovo-colore').value = nextFreeColor();
+  if (currentUser) {                       // colore cambiato da un altro dispositivo
+    const cur = profili.find(p => p.id === currentUser.id);
+    if (cur) { currentUser.colore = cur.colore; applyUserColor(colorOf(cur)); }
+  }
   // al primo carico controlla se c'è già un profilo in localStorage
   const savedId   = localStorage.getItem('gymtracker_uid');
   const savedNome = localStorage.getItem('gymtracker_nome');
   if (savedId && savedNome && !currentUser) {
     // verifica che esista ancora su Firestore
     if (profili.find(p => p.id === savedId)) {
-      selezionaProfilo({ id: savedId, nome: savedNome });
+      selezionaProfilo(profili.find(p => p.id === savedId));
     } else {
       localStorage.removeItem('gymtracker_uid');
       localStorage.removeItem('gymtracker_nome');
@@ -881,18 +931,22 @@ unsubProfili = onSnapshot(query(colUsers, orderBy('createdAt')), snap => {
 }, syncErr);
 
 /* ── form nuovo profilo ── */
-$('btn-crea-profilo').addEventListener('click', () => {
-  creaProfilo($('inp-nuovo-profilo').value);
+$('inp-nuovo-colore').addEventListener('input', function(){ this._touched = true; });
+function submitNuovoProfilo() {
+  creaProfilo($('inp-nuovo-profilo').value, $('inp-nuovo-colore').value);
   $('inp-nuovo-profilo').value = '';
-});
+  $('inp-nuovo-colore')._touched = false;
+}
+$('btn-crea-profilo').addEventListener('click', submitNuovoProfilo);
 $('inp-nuovo-profilo').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { creaProfilo($('inp-nuovo-profilo').value); $('inp-nuovo-profilo').value=''; }
+  if (e.key === 'Enter') submitNuovoProfilo();
 });
 
 /* ── badge header → torna ai profili ── */
 $('user-badge').addEventListener('click', () => {
   if (!confirm(`Cambiare profilo? (profilo corrente: ${currentUser?.nome})`)) return;
   currentUser = null;
+  applyUserColor('#d0021b');
   $('user-badge').style.display = 'none';
   $('btn-export').style.display = 'none';
   $('profili-screen').classList.remove('hidden');
