@@ -1013,6 +1013,12 @@ function resizeImg(file, cb) {
   r.readAsDataURL(file);
 }
 
+/* ─── Icone SVG (al posto delle emoji, che si vedono male/diverse a seconda del dispositivo) ─── */
+const ICO = {
+  image: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>',
+  pencil:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>'
+};
+
 /* ─── Icona generica ─── */
 function makeIcon(ex, size) {
   if (ex?.image) {
@@ -1051,8 +1057,8 @@ function renderExercises() {
     li.appendChild(makeIcon(ex,44));
     const nm=el('span'); nm.className='ex-name'; nm.textContent=ex.name;
     const ac=el('div');  ac.className='ex-actions';
-    const eb=el('button'); eb.textContent='🖼'; eb.className='btn-sm';
-    eb.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px';
+    const eb=el('button'); eb.innerHTML=ICO.image; eb.title='Cambia icona'; eb.className='btn-sm';
+    eb.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px;color:#555;display:inline-flex;align-items:center;justify-content:center';
     const delBtn=el('button'); delBtn.textContent='Elimina'; delBtn.className='btn-sm';
     delBtn.style.cssText='min-height:40px;border:1px solid #ccc;background:none;font-family:Arial,sans-serif;cursor:pointer;padding:0 10px;color:#888';
     eb.onclick=()=>openIconModal(ex.id);
@@ -1244,7 +1250,7 @@ function renderBlocchi() {
     }
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
-    const hedit=el('button'); hedit.type='button'; hedit.className='bh-del'; hedit.textContent='✏';
+    const hedit=el('button'); hedit.type='button'; hedit.className='bh-del'; hedit.innerHTML=ICO.pencil;
     hedit.title='Modifica blocco';
     hedit.addEventListener('click',()=>openBloccoModal(bi));
     hdr.append(hnm,hgiri,hedit,hdel);
@@ -1270,7 +1276,7 @@ function renderBlocchi() {
           : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
       const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
       del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
-      const editIt=el('button'); editIt.type='button'; editIt.className='bei-del'; editIt.textContent='✏';
+      const editIt=el('button'); editIt.type='button'; editIt.className='bei-del'; editIt.innerHTML=ICO.pencil;
       editIt.title='Modifica esercizio';
       editIt.addEventListener('click',()=>{ editingEx={bi,ei}; renderBlocchi(); });
       li.append(nm,tag,editIt,del); ul.appendChild(li);
