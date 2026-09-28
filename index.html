@@ -44,10 +44,42 @@
       width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; flex: 1; }
-    #sync { font-size: 13px; color: #888; }
-    #sync.ok    { color: #1a7f37; }
-    #sync.error { color: #d0021b; }
+    header h1 { font-size: 17px; font-weight: bold; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .net-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 12px;
+      background: rgba(255,255,255,0.08); color: #ccc; cursor: pointer; user-select: none;
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .net-badge .net-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #888;
+      transition: all 0.2s;
+    }
+    .net-badge.online {
+      background: rgba(26, 127, 55, 0.15); color: #85e89d; border: 1px solid rgba(26, 127, 55, 0.35);
+    }
+    .net-badge.online .net-dot {
+      background: #2ea043; box-shadow: 0 0 6px rgba(46, 160, 67, 0.6);
+    }
+    .net-badge.offline {
+      background: rgba(217, 119, 6, 0.2); color: #fbbf24; border: 1px solid rgba(217, 119, 6, 0.45);
+    }
+    .net-badge.offline .net-dot {
+      background: #f59e0b; box-shadow: 0 0 6px #f59e0b;
+    }
+    .net-badge.syncing {
+      background: rgba(37, 99, 235, 0.15); color: #93c5fd; border: 1px solid rgba(37, 99, 235, 0.35);
+    }
+    .net-badge.syncing .net-dot {
+      background: #3b82f6; box-shadow: 0 0 6px #3b82f6;
+    }
+    .net-badge.error {
+      background: rgba(208, 2, 27, 0.2); color: #ff8b8b; border: 1px solid rgba(208, 2, 27, 0.45);
+    }
+    .net-badge.error .net-dot {
+      background: #d0021b;
+    }
+    #sync { font-size: 13px; color: #888; display: none; }
 
     /* ─── TABS ─── */
     nav.tabs {
@@ -342,18 +374,29 @@
     #rec-text   { fill:   #1a7f37 !important; }
 
     /* ─── GRAFICO ─── */
-    .chart-wrap { margin-bottom: 14px; }
-    .chart-wrap h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+    .chart-wrap { margin-bottom: 14px; background: #fff; padding: 14px; border: 1px solid #ccc; border-radius: 4px; }
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+    .chart-header h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0; }
+    .chart-tabs { display: inline-flex; background: #f0f0f0; border-radius: 4px; padding: 2px; gap: 2px; }
+    .chart-tab-btn {
+      border: none; background: none; font-size: 11px; font-weight: bold;
+      padding: 3px 8px; border-radius: 3px; color: #777; cursor: pointer; transition: all 0.15s;
+    }
+    .chart-tab-btn.active {
+      background: #fff; color: #1c1c1c; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
     .chart-svg { width: 100%; display: block; overflow: visible; }
-    .chart-legend { display: flex; gap: 16px; margin-top: 6px; }
-    .chart-legend span { font-size: 11px; color: #888; display: flex; align-items: center; gap: 5px; }
-    .chart-legend span::before { content:''; display:inline-block; width:14px; height:3px; border-radius:2px; }
-    .leg-reps::before { background:#d0021b; }
+    .chart-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: #666; flex-wrap: wrap; }
+    .chart-legend span { display: flex; align-items: center; gap: 5px; }
+    .chart-legend span::before { content:''; display:inline-block; width:12px; height:3px; border-radius:2px; }
+    .leg-1rm::before  { background:#d0021b; }
     .leg-kg::before   { background:#1c1c1c; }
+    .leg-reps::before { background:#2563eb; }
     .chart-tooltip {
       position: fixed; background: #1c1c1c; color: #fff;
-      font-size: 12px; padding: 5px 9px; pointer-events: none;
+      font-size: 12px; padding: 6px 10px; pointer-events: none; border-radius: 4px;
       opacity: 0; transition: opacity .15s; z-index: 500; white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid #444;
     }
     .chart-tooltip.visible { opacity: 1; }
 
@@ -505,6 +548,10 @@
 <header>
   <div class="logo">G</div>
   <h1>GYM TRACKER</h1>
+  <div id="net-badge" class="net-badge online" title="Stato connessione (tocca per dettagli)">
+    <span class="net-dot"></span>
+    <span id="net-label">Online</span>
+  </div>
   <div id="user-badge">
     <div class="ub-avatar" id="ub-avatar"></div>
     <span class="ub-name" id="ub-name"></span>
@@ -512,7 +559,7 @@
   <button id="btn-export" title="Esporta dati">⬇</button>
   <button id="btn-import" title="Importa backup">⬆</button>
   <input type="file" id="file-import" accept="application/json,.json" style="display:none" />
-  <span id="sync">●</span>
+  <span id="sync" style="display:none">●</span>
 </header>
 
 <nav class="tabs">
@@ -906,11 +953,61 @@ let exercises=[], logs=[], schede=[];
 const $  = id => document.getElementById(id);
 const el = tag => document.createElement(tag);
 
-/* ─── Sync indicator ─── */
+/* ─── Sync & Network indicator ─── */
 const sync = $('sync');
-const syncOk   = () => { sync.textContent='●'; sync.className='ok'; };
-const syncErr  = () => { sync.textContent='●'; sync.className='error'; };
-const syncWait = () => { sync.textContent='●'; sync.className=''; };
+const netBadge = $('net-badge');
+const netLabel = $('net-label');
+
+function updateNetworkUI(status, label) {
+  if (netBadge && netLabel) {
+    netBadge.className = 'net-badge ' + status;
+    netLabel.textContent = label;
+  }
+  if (sync) {
+    sync.className = (status === 'online' || status === 'syncing') ? 'ok' : 'error';
+  }
+}
+
+const syncOk = () => {
+  if (!navigator.onLine) {
+    updateNetworkUI('offline', 'Offline (Locale)');
+  } else {
+    updateNetworkUI('online', 'Online');
+  }
+};
+const syncErr = () => {
+  if (!navigator.onLine) {
+    updateNetworkUI('offline', 'Offline (Locale)');
+  } else {
+    updateNetworkUI('error', 'Sync non riuscito');
+  }
+};
+const syncWait = () => {
+  if (!navigator.onLine) {
+    updateNetworkUI('offline', 'Offline (Locale)');
+  } else {
+    updateNetworkUI('syncing', 'Sincronizzazione…');
+  }
+};
+
+window.addEventListener('online', () => {
+  updateNetworkUI('syncing', 'Riconnessione…');
+  showPRBanner('📶 TORNATO ONLINE', 'Connessione ristabilita. I dati vengono sincronizzati con il cloud.');
+  setTimeout(syncOk, 2000);
+});
+
+window.addEventListener('offline', () => {
+  updateNetworkUI('offline', 'Offline (Locale)');
+  showPRBanner('⚡ MODALITÀ OFFLINE ATTIVA', 'Puoi continuare ad allenarti normalmente! Tutte le serie restano salvate in locale.');
+});
+
+netBadge?.addEventListener('click', () => {
+  if (!navigator.onLine) {
+    showPRBanner('⚡ MODALITÀ OFFLINE', 'Sei offline. Le serie sono protette nella memoria del dispositivo e si sincronizzeranno appena tornerai sotto rete.');
+  } else {
+    showPRBanner('✓ CONNESSO AL CLOUD', 'Tutti i tuoi allenamenti, schede ed esercizi sono sincronizzati.');
+  }
+});
 
 /* ─── Loading ─── */
 let ready = {ex:false,logs:false,sch:false};
@@ -2476,16 +2573,35 @@ function renderStoria(exId) {
   if (exId) {
     const withWeight=sorted.filter(l=>l.weight!=null && l.reps!=null);
     if (withWeight.length) {
-      const pr=withWeight.reduce((best,l)=>{
+      const prWeight=withWeight.reduce((best,l)=>{
         if (!best) return l;
         if (l.weight>best.weight) return l;
         if (l.weight===best.weight && l.reps>best.reps) return l;
         return best;
       },null);
-      const prBox=el('div'); prBox.className='card'; prBox.style.margin='0 0 12px';
+
+      const pr1RM=withWeight.reduce((best,l)=>{
+        const cur1RM = l.weight * (1 + l.reps / 30);
+        if (!best) return { log: l, val: cur1RM };
+        return cur1RM > best.val ? { log: l, val: cur1RM } : best;
+      },null);
+
+      const prBox=el('div'); prBox.className='card'; prBox.style.margin='0 0 14px';
       prBox.style.borderLeft='4px solid var(--uc)';
-      prBox.innerHTML=`<strong>🏆 Record: ${pr.weight} kg × ${pr.reps} reps</strong>
-        <div style="font-size:12px;color:#888;margin-top:2px">${fmtDate(pr.clientTs)}</div>`;
+      prBox.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px">⚡ Miglior 1RM Stimato</div>
+            <div style="font-size:17px;font-weight:bold;color:#d0021b">${Math.round(pr1RM.val)} kg <span style="font-size:12px;font-weight:normal;color:#666">(${pr1RM.log.weight}kg × ${pr1RM.log.reps})</span></div>
+            <div style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(pr1RM.log.clientTs)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px">🏆 Carico Massimo</div>
+            <div style="font-size:17px;font-weight:bold;color:#1c1c1c">${prWeight.weight} kg <span style="font-size:12px;font-weight:normal;color:#666">(${prWeight.reps} reps)</span></div>
+            <div style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(prWeight.clientTs)}</div>
+          </div>
+        </div>
+      `;
       cont.appendChild(prBox);
     }
   }
@@ -2560,110 +2676,225 @@ function renderStoria(exId) {
   });
 }
 
-/* ─── Costruisce il grafico SVG ─── */
-function buildChart(points, hasPeso, hasReps) {
-  const W=320, H=120, PL=36, PR=12, PT=10, PB=24;
-  const iW=W-PL-PR, iH=H-PT-PB;
-  const n=points.length;
+/* ─── Costruisce il grafico SVG Interattivo con 1RM / Carico / Reps ─── */
+let currentChartMode = '1rm';
 
-  // valori
-  const repsVals=points.map(p=>p.reps??null);
-  const kgVals  =points.map(p=>p.weight??null);
+function buildChart(points, hasPeso, hasReps) {
+  const wrap = el('div'); wrap.className = 'chart-wrap';
+
+  // Opzioni disponibili
+  const canShow1RM = hasPeso && hasReps;
+  if (!canShow1RM && currentChartMode === '1rm') {
+    currentChartMode = hasPeso ? 'kg' : 'reps';
+  }
+
+  // Header del grafico con titolo e selettore metrica
+  const header = el('div'); header.className = 'chart-header';
+  const hTitle = el('h4'); hTitle.textContent = 'Progressione nel Tempo';
+  header.appendChild(hTitle);
+
+  const tabs = el('div'); tabs.className = 'chart-tabs';
+  const modes = [];
+  if (canShow1RM) modes.push({ id: '1rm', label: '1RM' });
+  if (hasPeso)    modes.push({ id: 'kg',  label: 'Peso' });
+  if (hasReps)    modes.push({ id: 'reps', label: 'Reps' });
+  if (canShow1RM) modes.push({ id: 'all', label: 'Tutto' });
+
+  const chartBody = el('div');
+
+  function renderMode(mode) {
+    currentChartMode = mode;
+    tabs.querySelectorAll('.chart-tab-btn').forEach(btn => {
+      btn.className = 'chart-tab-btn' + (btn.dataset.mode === mode ? ' active' : '');
+    });
+    chartBody.innerHTML = '';
+    chartBody.appendChild(renderChartSVG(points, mode, hasPeso, hasReps));
+  }
+
+  modes.forEach(m => {
+    const b = el('button'); b.type = 'button'; b.className = 'chart-tab-btn' + (m.id === currentChartMode ? ' active' : '');
+    b.dataset.mode = m.id; b.textContent = m.label;
+    b.addEventListener('click', () => renderMode(m.id));
+    tabs.appendChild(b);
+  });
+
+  header.appendChild(tabs);
+  wrap.appendChild(header);
+  wrap.appendChild(chartBody);
+
+  renderMode(currentChartMode);
+  return wrap;
+}
+
+function renderChartSVG(points, mode, hasPeso, hasReps) {
+  const container = el('div');
+  const W = 330, H = 140, PL = 38, PR = 14, PT = 12, PB = 24;
+  const iW = W - PL - PR, iH = H - PT - PB;
+  const n = points.length;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('class', 'chart-svg');
+  svg.style.height = '140px';
+
+  // Valori delle serie
+  const repsVals  = points.map(p => p.reps ?? null);
+  const kgVals    = points.map(p => p.weight ?? null);
+  const oneRMVals = points.map(p => (p.weight != null && p.reps) ? Math.round(p.weight * (1 + p.reps / 30) * 10) / 10 : null);
 
   function scaleY(vals) {
-    const v=vals.filter(x=>x!=null);
-    if (!v.length) return ()=>PT+iH/2;
-    const mn=Math.min(...v), mx=Math.max(...v);
-    const range=mx-mn||1;
-    return val=>val==null?null: PT + iH - ((val-mn)/range)*iH;
+    const v = vals.filter(x => x != null);
+    if (!v.length) return { fn: () => PT + iH / 2, min: 0, max: 0 };
+    let mn = Math.min(...v), mx = Math.max(...v);
+    if (mn === mx) { mn = Math.max(0, mn - 5); mx = mx + 5; }
+    const range = mx - mn || 1;
+    return {
+      fn: val => val == null ? null : PT + iH - ((val - mn) / range) * iH,
+      min: mn, max: mx
+    };
   }
-  const scR=scaleY(repsVals);
-  const scK=scaleY(kgVals);
 
-  function xOf(i) { return PL + (n===1?iW/2:i*(iW/(n-1))); }
+  function xOf(i) { return PL + (n === 1 ? iW / 2 : i * (iW / (n - 1))); }
 
-  // crea SVG
-  const ns='http://www.w3.org/2000/svg';
-  const svg=document.createElementNS(ns,'svg');
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  svg.setAttribute('class','chart-svg');
-  svg.style.height='130px';
+  // Determina scala principale per Y e griglia
+  let primaryScale;
+  let unit = '';
+  if (mode === '1rm') { primaryScale = scaleY(oneRMVals); unit = 'k'; }
+  else if (mode === 'kg') { primaryScale = scaleY(kgVals); unit = 'k'; }
+  else if (mode === 'reps') { primaryScale = scaleY(repsVals); unit = 'r'; }
+  else { primaryScale = scaleY(oneRMVals.some(v=>v!=null) ? oneRMVals : kgVals); unit = 'k'; }
 
-  // griglia orizzontale leggera
-  for (let k=0;k<=3;k++) {
-    const y=PT+k*(iH/3);
-    const line=document.createElementNS(ns,'line');
-    line.setAttribute('x1',PL); line.setAttribute('x2',PL+iW);
-    line.setAttribute('y1',y);  line.setAttribute('y2',y);
-    line.setAttribute('stroke','#eee'); line.setAttribute('stroke-width','1');
+  // Griglia orizzontale
+  for (let k = 0; k <= 3; k++) {
+    const y = PT + k * (iH / 3);
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', PL); line.setAttribute('x2', PL + iW);
+    line.setAttribute('y1', y);  line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#eef0f2'); line.setAttribute('stroke-width', '1');
     svg.appendChild(line);
   }
 
-  // disegna una serie
-  function drawSeries(vals, scale, color) {
-    const valid=vals.map((v,i)=>v!=null?{i,v}:null).filter(Boolean);
-    if (valid.length<2) {
-      // solo punti, nessuna linea
-      valid.forEach(({i,v})=>{
-        const c=document.createElementNS(ns,'circle');
-        c.setAttribute('cx',xOf(i)); c.setAttribute('cy',scale(v));
-        c.setAttribute('r','5'); c.setAttribute('fill',color);
-        svg.appendChild(c);
-      });
-      return;
+  // Etichette min e max asse Y
+  if (mode !== 'all' && primaryScale.max > primaryScale.min) {
+    const tMax = document.createElementNS(ns, 'text');
+    tMax.setAttribute('x', PL - 4); tMax.setAttribute('y', PT + 8);
+    tMax.setAttribute('text-anchor', 'end'); tMax.setAttribute('font-size', '9');
+    tMax.setAttribute('fill', '#9ca3af'); tMax.setAttribute('font-family', 'Arial,sans-serif');
+    tMax.textContent = Math.round(primaryScale.max) + unit;
+    svg.appendChild(tMax);
+
+    const tMin = document.createElementNS(ns, 'text');
+    tMin.setAttribute('x', PL - 4); tMin.setAttribute('y', PT + iH);
+    tMin.setAttribute('text-anchor', 'end'); tMin.setAttribute('font-size', '9');
+    tMin.setAttribute('fill', '#9ca3af'); tMin.setAttribute('font-family', 'Arial,sans-serif');
+    tMin.textContent = Math.round(primaryScale.min) + unit;
+    svg.appendChild(tMin);
+  }
+
+  // Disegna serie
+  function drawSeries(vals, sc, color, isFillArea = false) {
+    const valid = vals.map((v, i) => v != null ? { i, v } : null).filter(Boolean);
+    if (!valid.length) return;
+
+    if (isFillArea && valid.length >= 2) {
+      const areaPts = [
+        `${xOf(valid[0].i)},${PT + iH}`,
+        ...valid.map(({ i, v }) => `${xOf(i)},${sc.fn(v)}`),
+        `${xOf(valid[valid.length - 1].i)},${PT + iH}`
+      ].join(' ');
+      const poly = document.createElementNS(ns, 'polygon');
+      poly.setAttribute('points', areaPts);
+      poly.setAttribute('fill', color);
+      poly.setAttribute('opacity', '0.1');
+      svg.appendChild(poly);
     }
-    // polyline
-    const pts=valid.map(({i,v})=>`${xOf(i)},${scale(v)}`).join(' ');
-    const pl=document.createElementNS(ns,'polyline');
-    pl.setAttribute('points',pts);
-    pl.setAttribute('fill','none');
-    pl.setAttribute('stroke',color);
-    pl.setAttribute('stroke-width','2');
-    pl.setAttribute('stroke-linejoin','round');
-    pl.setAttribute('stroke-linecap','round');
-    svg.appendChild(pl);
-    // punti toccabili
-    valid.forEach(({i,v})=>{
-      const c=document.createElementNS(ns,'circle');
-      c.setAttribute('cx',xOf(i)); c.setAttribute('cy',scale(v));
-      c.setAttribute('r','5'); c.setAttribute('fill',color);
-      c.setAttribute('stroke','#fff'); c.setAttribute('stroke-width','2');
-      c.style.cursor='pointer';
-      // tooltip al touch/click
-      const orig=points[i];
-      const label=color==='#d0021b'
-        ? `${v} reps — ${fmtDate(orig.clientTs)}`
-        : `${v} kg — ${fmtDate(orig.clientTs)}`;
-      c.addEventListener('click', e=>showTooltip(e, label));
-      c.addEventListener('touchstart', e=>{ e.preventDefault(); showTooltip(e.touches[0], label); },{passive:false});
+
+    if (valid.length >= 2) {
+      const pts = valid.map(({ i, v }) => `${xOf(i)},${sc.fn(v)}`).join(' ');
+      const pl = document.createElementNS(ns, 'polyline');
+      pl.setAttribute('points', pts);
+      pl.setAttribute('fill', 'none');
+      pl.setAttribute('stroke', color);
+      pl.setAttribute('stroke-width', '2.5');
+      pl.setAttribute('stroke-linejoin', 'round');
+      pl.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(pl);
+    }
+
+    // Punti interattivi
+    valid.forEach(({ i, v }) => {
+      const cx = xOf(i), cy = sc.fn(v);
+      const c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+      c.setAttribute('r', '4.5'); c.setAttribute('fill', color);
+      c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', '2');
+      c.style.cursor = 'pointer';
+
+      const orig = points[i];
+      const cur1RM = (orig.weight != null && orig.reps) ? Math.round(orig.weight * (1 + orig.reps / 30)) : null;
+      let label = '';
+      if (mode === '1rm') {
+        label = `⚡ 1RM: ${Math.round(v)} kg (${orig.weight}kg × ${orig.reps}) — ${fmtDate(orig.clientTs)}`;
+      } else if (mode === 'kg') {
+        label = `🏋️ ${v} kg × ${orig.reps || '?'} reps — ${fmtDate(orig.clientTs)}`;
+      } else if (mode === 'reps') {
+        label = `🔁 ${v} reps${orig.weight != null ? ' × ' + orig.weight + 'kg' : ''} — ${fmtDate(orig.clientTs)}`;
+      } else {
+        label = `${orig.weight != null ? orig.weight + 'kg × ' : ''}${orig.reps || 0} reps${cur1RM ? ' (1RM: ' + cur1RM + 'kg)' : ''} — ${fmtDate(orig.clientTs)}`;
+      }
+
+      c.addEventListener('click', e => showTooltip(e, label));
+      c.addEventListener('touchstart', e => { e.preventDefault(); showTooltip(e.touches[0], label); }, { passive: false });
       svg.appendChild(c);
     });
   }
 
-  if (hasReps) drawSeries(repsVals, scR, '#d0021b');
-  if (hasPeso) drawSeries(kgVals,   scK, '#1c1c1c');
+  if (mode === '1rm') {
+    drawSeries(oneRMVals, primaryScale, '#d0021b', true);
+  } else if (mode === 'kg') {
+    drawSeries(kgVals, primaryScale, '#1c1c1c', true);
+  } else if (mode === 'reps') {
+    drawSeries(repsVals, primaryScale, '#2563eb', true);
+  } else if (mode === 'all') {
+    if (oneRMVals.some(v => v != null)) drawSeries(oneRMVals, primaryScale, '#d0021b');
+    if (kgVals.some(v => v != null))    drawSeries(kgVals, scaleY(kgVals), '#1c1c1c');
+    if (repsVals.some(v => v != null))  drawSeries(repsVals, scaleY(repsVals), '#2563eb');
+  }
 
-  // etichette asse X (prima e ultima data)
+  // Date asse X
   function xLabel(txt, x) {
-    const t=document.createElementNS(ns,'text');
-    t.setAttribute('x',x); t.setAttribute('y',H-4);
-    t.setAttribute('text-anchor','middle');
-    t.setAttribute('font-size','9');
-    t.setAttribute('fill','#aaa');
-    t.setAttribute('font-family','Arial,sans-serif');
-    t.textContent=txt; svg.appendChild(t);
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', x); t.setAttribute('y', H - 4);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '9');
+    t.setAttribute('fill', '#9ca3af');
+    t.setAttribute('font-family', 'Arial,sans-serif');
+    t.textContent = txt; svg.appendChild(t);
   }
   xLabel(fmtDate(points[0].clientTs), xOf(0));
-  if (n>1) xLabel(fmtDate(points[n-1].clientTs), xOf(n-1));
+  if (n > 1) xLabel(fmtDate(points[n - 1].clientTs), xOf(n - 1));
 
-  // wrapper con legenda
-  const wrap=el('div'); wrap.className='chart-wrap card';
-  const title=el('h4'); title.textContent='Andamento';
-  const leg=el('div'); leg.className='chart-legend';
-  if (hasReps) { const s=el('span'); s.className='leg-reps'; s.textContent='Ripetizioni'; leg.appendChild(s); }
-  if (hasPeso) { const s=el('span'); s.className='leg-kg';   s.textContent='Peso (kg)';  leg.appendChild(s); }
-  wrap.append(title, svg, leg);
-  return wrap;
+  container.appendChild(svg);
+
+  // Legenda
+  const leg = el('div'); leg.className = 'chart-legend';
+  if (mode === '1rm') {
+    leg.innerHTML = '<span class="leg-1rm">Progressione 1RM Stimato (kg)</span>';
+  } else if (mode === 'kg') {
+    leg.innerHTML = '<span class="leg-kg">Carico sollevato (kg)</span>';
+  } else if (mode === 'reps') {
+    leg.innerHTML = '<span class="leg-reps">Ripetizioni completate</span>';
+  } else {
+    leg.innerHTML = `
+      <span class="leg-1rm">1RM Stimato</span>
+      <span class="leg-kg">Carico (kg)</span>
+      <span class="leg-reps">Ripetizioni</span>
+    `;
+  }
+  container.appendChild(leg);
+
+  return container;
 }
 
 /* ─── Tooltip ─── */
