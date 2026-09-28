@@ -226,7 +226,7 @@
       #print-header { display: block; }
       .card { border: none; box-shadow: none; padding: 0; }
       .del-row { display: none !important; }
-      .h-table th:last-child, .h-table td:last-child { display: none; }
+      #storia-cont .h-table th:nth-last-child(-n+2), #storia-cont .h-table td:nth-last-child(-n+2) { display: none; }
       html, body, #tab-storia, #tab-storia * { background: #fff !important; color: #000 !important; }
       body.print-grouped #storia-cont { display: none !important; }
       body.print-grouped #print-groups { display: block; }
@@ -415,12 +415,12 @@
     }
     #user-badge .ub-name { font-size: 12px; color: #ccc; max-width: 80px;
                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #btn-export {
+    #btn-export, #btn-import {
       display: none; align-items: center; justify-content: center;
       background: #2a2a2a; border: 1px solid #444; color: #ccc;
       width: 34px; height: 34px; font-size: 16px; cursor: pointer; flex-shrink: 0;
     }
-    #btn-export:active { border-color: #d0021b; color: #fff; }
+    #btn-export:active, #btn-import:active { border-color: #d0021b; color: #fff; }
 
     /* ─── LOADING ─── */
     #loading {
@@ -471,6 +471,8 @@
     <span class="ub-name" id="ub-name"></span>
   </div>
   <button id="btn-export" title="Esporta dati">⬇</button>
+  <button id="btn-import" title="Importa backup">⬆</button>
+  <input type="file" id="file-import" accept="application/json,.json" style="display:none" />
   <span id="sync">●</span>
 </header>
 
@@ -610,6 +612,10 @@
           </div>
         </div>
       </div>
+      <div id="nota-wrap">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-nota-toggle" style="margin-top:6px">📝 Aggiungi nota</button>
+        <textarea id="al-nota" placeholder="Es. spalla che tira, macchina occupata…" style="display:none;width:100%;margin-top:8px;min-height:60px;background:#1c1c1c;border:1px solid #333;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:inherit"></textarea>
+      </div>
     </div>
 
     <div class="sess-nav">
@@ -659,6 +665,10 @@
 <div class="page" id="tab-storia">
   <div class="card" id="storia-filtro-card">
     <h2>Filtra</h2>
+    <div class="view-toggle" style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn btn-dark btn-sm" id="btn-vista-ex" style="flex:1">Per esercizio</button>
+      <button class="btn btn-ghost btn-sm" id="btn-vista-sess" style="flex:1">Per sessione</button>
+    </div>
     <select class="inp" id="storia-sel"></select>
   </div>
   <div class="card">
@@ -863,7 +873,7 @@ function selezionaProfilo(p) {
   $('ub-avatar').textContent = p.nome.charAt(0).toUpperCase();
   $('ub-name').textContent   = p.nome;
   $('user-badge').style.display = 'flex';
-  $('btn-export').style.display = 'flex';
+  $('btn-export').style.display = 'flex'; $('btn-import').style.display = 'flex';
 
   // nasconde schermata profili, mostra loading
   $('profili-screen').classList.add('hidden');
@@ -948,7 +958,7 @@ $('user-badge').addEventListener('click', () => {
   currentUser = null;
   applyUserColor('#d0021b');
   $('user-badge').style.display = 'none';
-  $('btn-export').style.display = 'none';
+  $('btn-export').style.display = 'none'; $('btn-import').style.display = 'none';
   $('profili-screen').classList.remove('hidden');
   // stacca listener dati
   if (unsubEx)   { unsubEx();   unsubEx=null; }
@@ -957,6 +967,37 @@ $('user-badge').addEventListener('click', () => {
 });
 
 /* ── esporta dati (backup) ── */
+$('btn-import').addEventListener('click', () => $('file-import').click());
+$('file-import').addEventListener('change', async function() {
+  const f=this.files[0]; this.value=''; if (!f || !currentUser) return;
+  let d;
+  try { d=JSON.parse(await f.text()); } catch(e) { alert('File non valido.'); return; }
+  const es=Array.isArray(d.esercizi)?d.esercizi:[], sc=Array.isArray(d.schede)?d.schede:[], lg=Array.isArray(d.log)?d.log:[];
+  if (!confirm(`Importare nel profilo "${currentUser.nome}"?\n${es.length} esercizi, ${sc.length} schede, ${lg.length} log.\nGli esercizi già presenti non vengono duplicati.`)) return;
+  try {
+    syncWait();
+    const idByName=new Map(exercises.map(e=>[(e.name||'').toLowerCase(),e.id]));
+    for (const e of es) {
+      const k=(e.nome||'').toLowerCase(); if (!k || idByName.has(k)) continue;
+      const r=await addDoc(colEx,{name:e.nome,image:e.immagine||null,createdAt:serverTimestamp()});
+      idByName.set(k,r.id);
+    }
+    for (const x of sc) {
+      if (!x.nome || !Array.isArray(x.blocchi)) continue;
+      await addDoc(colSch,{name:x.nome,blocchi:x.blocchi,createdAt:serverTimestamp()});
+    }
+    const have=new Set(logs.map(l=>`${l.exerciseId}_${tsMs(l.clientTs)}`));
+    let n=0;
+    for (const l of lg) {
+      const exId=idByName.get((l.esercizio||'').toLowerCase()); const ts=Date.parse(l.data);
+      if (!exId || isNaN(ts) || have.has(`${exId}_${ts}`)) continue;
+      await addDoc(colLogs,{exerciseId:exId,reps:l.reps??null,weight:l.peso??null,sessionId:'import',clientTs:ts,createdAt:serverTimestamp()});
+      n++;
+    }
+    alert(`Import completato: ${n} log aggiunti.`);
+  } catch(err) { alert('Import non riuscito: controlla le regole Firestore o la connessione.'); }
+});
+
 $('btn-export').addEventListener('click', () => {
   if (!currentUser) return;
   const payload = {
@@ -1013,9 +1054,16 @@ function resizeImg(file, cb) {
   r.readAsDataURL(file);
 }
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
 /* ─── Icone SVG (al posto delle emoji, che si vedono male/diverse a seconda del dispositivo) ─── */
 const ICO = {
   image: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>',
+  up:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>',
+  note:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v13l-4 4H4z"/><path d="M8 9h8M8 13h5"/></svg>',
+  down:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M18 13l-6 6-6-6"/></svg>',
   pencil:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>'
 };
 
@@ -1147,13 +1195,18 @@ function renderSchedeList() {
     const btns=el('div'); btns.className='s-btns';
 
     const bMod=el('button'); bMod.className='btn btn-ghost btn-sm'; bMod.textContent='Modifica';
+    const bDup=el('button'); bDup.className='btn btn-ghost btn-sm'; bDup.textContent='Duplica';
     const bDel=el('button'); bDel.className='btn btn-ghost-red btn-sm'; bDel.textContent='Elimina';
     bMod.addEventListener('click',()=>openEditor(s.id));
+    bDup.addEventListener('click',async()=>{
+      syncWait();
+      await addDoc(colSch,{ name:`${s.name} (copia)`, blocchi:JSON.parse(JSON.stringify(s.blocchi||[])), createdAt:serverTimestamp() });
+    });
     bDel.addEventListener('click',async()=>{
       if (!confirm(`Eliminare "${s.name}"?`)) return;
       syncWait(); await deleteDoc(doc(db,`users/${currentUser.id}/schede`,s.id));
     });
-    btns.append(bMod,bDel);
+    btns.append(bMod,bDup,bDel);
     row.append(nm,sub,btns);
     cont.appendChild(row);
   });
@@ -1248,12 +1301,18 @@ function renderBlocchi() {
     } else {
       hgiri.textContent=`${b.giri} gir${b.giri===1?'o':'i'} · senza recupero`;
     }
+    const hup=el('button'); hup.type='button'; hup.className='bh-del'; hup.innerHTML=ICO.up;
+    hup.title='Sposta su'; hup.disabled=bi===0; hup.style.opacity=bi===0?'.3':'1';
+    hup.addEventListener('click',()=>{ [editBlocchi[bi-1],editBlocchi[bi]]=[editBlocchi[bi],editBlocchi[bi-1]]; renderBlocchi(); });
+    const hdown=el('button'); hdown.type='button'; hdown.className='bh-del'; hdown.innerHTML=ICO.down;
+    hdown.title='Sposta giù'; hdown.disabled=bi===editBlocchi.length-1; hdown.style.opacity=bi===editBlocchi.length-1?'.3':'1';
+    hdown.addEventListener('click',()=>{ [editBlocchi[bi+1],editBlocchi[bi]]=[editBlocchi[bi],editBlocchi[bi+1]]; renderBlocchi(); });
     const hdel=el('button'); hdel.type='button'; hdel.className='bh-del'; hdel.textContent='✕';
     hdel.addEventListener('click',()=>{ editBlocchi.splice(bi,1); renderBlocchi(); });
     const hedit=el('button'); hedit.type='button'; hedit.className='bh-del'; hedit.innerHTML=ICO.pencil;
     hedit.title='Modifica blocco';
     hedit.addEventListener('click',()=>openBloccoModal(bi));
-    hdr.append(hnm,hgiri,hedit,hdel);
+    hdr.append(hnm,hgiri,hup,hdown,hedit,hdel);
 
     // body
     const body=el('div'); body.className='blocco-body';
@@ -1274,12 +1333,18 @@ function renderBlocchi() {
         : item.tipo==='tempo'
           ? `⏱ ${fmtSec(item.durata||60)}`
           : (b.tipo==='serie' ? `${item.serie||3}×Solo` : 'Solo');
+      const eup=el('button'); eup.type='button'; eup.className='bei-del'; eup.innerHTML=ICO.up;
+      eup.title='Sposta su'; eup.disabled=ei===0; eup.style.opacity=ei===0?'.3':'1';
+      eup.addEventListener('click',()=>{ [b.esercizi[ei-1],b.esercizi[ei]]=[b.esercizi[ei],b.esercizi[ei-1]]; renderBlocchi(); });
+      const edown=el('button'); edown.type='button'; edown.className='bei-del'; edown.innerHTML=ICO.down;
+      edown.title='Sposta giù'; edown.disabled=ei===b.esercizi.length-1; edown.style.opacity=ei===b.esercizi.length-1?'.3':'1';
+      edown.addEventListener('click',()=>{ [b.esercizi[ei+1],b.esercizi[ei]]=[b.esercizi[ei],b.esercizi[ei+1]]; renderBlocchi(); });
       const del=el('button'); del.type='button'; del.className='bei-del'; del.textContent='✕';
       del.addEventListener('click',()=>{ b.esercizi.splice(ei,1); renderBlocchi(); });
       const editIt=el('button'); editIt.type='button'; editIt.className='bei-del'; editIt.innerHTML=ICO.pencil;
       editIt.title='Modifica esercizio';
       editIt.addEventListener('click',()=>{ editingEx={bi,ei}; renderBlocchi(); });
-      li.append(nm,tag,editIt,del); ul.appendChild(li);
+      li.append(nm,tag,eup,edown,editIt,del); ul.appendChild(li);
     });
 
     // riga aggiungi/modifica esercizio
@@ -1448,7 +1513,37 @@ $('mb-save').addEventListener('click',()=>{
 });
 
 /* ════════════════════ ALLENAMENTO ════════════════════ */
+const sessKey = () => `gymtracker_sess_${currentUser?.id}`;
+function saveSess()  { try { if (sess && currentUser) localStorage.setItem(sessKey(), JSON.stringify(sess)); } catch(e){} }
+function clearSess() { try { if (currentUser) localStorage.removeItem(sessKey()); } catch(e){} }
+function renderResumeBanner() {
+  const old=$('resume-banner'); if (old) old.remove();
+  if (sess || !currentUser) return;
+  let saved=null;
+  try { saved=JSON.parse(localStorage.getItem(sessKey())||'null'); } catch(e){}
+  if (!saved || !saved.steps || saved.cur>=saved.steps.length) return;
+  const box=el('div'); box.id='resume-banner'; box.className='card';
+  box.style.borderLeft='4px solid var(--uc)';
+  const done=saved.steps.slice(0,saved.cur).filter(x=>!x.isRecupero).length;
+  const tot=saved.steps.filter(x=>!x.isRecupero).length;
+  const t=el('p'); t.style.marginBottom='10px';
+  t.textContent=`Allenamento in corso: ${saved.sName} (${done}/${tot})`;
+  const go=el('button'); go.className='btn btn-red btn-full'; go.textContent='Riprendi allenamento';
+  go.addEventListener('click',()=>{
+    sess=saved;
+    $('al-start').style.display='none';
+    $('al-session').style.display='block';
+    $('btn-annulla-al').style.display='';
+    requestWakeLock(); renderStep();
+  });
+  const drop=el('button'); drop.className='btn btn-ghost btn-full'; drop.style.marginTop='8px'; drop.textContent='Scarta';
+  drop.addEventListener('click',()=>{ clearSess(); box.remove(); });
+  box.append(t,go,drop);
+  $('al-start').insertBefore(box,$('al-start').firstChild);
+}
+
 function renderAlStart() {
+  setTimeout(renderResumeBanner,0);
   const sel=$('al-sel-scheda');
   sel.innerHTML='<option value="">— seleziona —</option>';
   schede.forEach(s=>{
@@ -1676,6 +1771,7 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
 
 function renderStep() {
   if (!sess) return;
+  saveSess();
   const {steps,cur}=sess;
   const step=steps[cur];
 
@@ -1741,6 +1837,8 @@ function renderStep() {
     $('al-kg').value=last?.weight!=null?last.weight:'';
   }
   if (step.tipo==='tempo') initTimer(step.durata||60);
+  $('al-nota').value=''; $('al-nota').style.display='none';
+  $('btn-nota-toggle').textContent='📝 Aggiungi nota';
 }
 
 /* ── next / skip ── */
@@ -1760,8 +1858,9 @@ async function doNext() {
     const wv=$('al-kg').value.trim();
     const weight=wv!==''?parseFloat(wv):null;
     syncWait();
+    const nota1=$('al-nota').value.trim()||null;
     await addDoc(colLogs,{
-      exerciseId:step.exId, reps, weight,
+      exerciseId:step.exId, reps, weight, nota:nota1,
       sessionId:`${sess.sid}_${sess.ts}`,
       clientTs:Date.now(), createdAt:serverTimestamp()
     });
@@ -1769,9 +1868,10 @@ async function doNext() {
   } else if (step.tipo==='tempo') {
     stopTimer();
     syncWait();
+    const nota2=$('al-nota').value.trim()||null;
     await addDoc(colLogs,{
       exerciseId:step.exId, reps:null, weight:null,
-      durata:step.durata||null,
+      durata:step.durata||null, nota:nota2,
       sessionId:`${sess.sid}_${sess.ts}`,
       clientTs:Date.now(), createdAt:serverTimestamp()
     });
@@ -1865,8 +1965,15 @@ function showEnd() {
   $('end-wrap').style.display='block';
 }
 
+$('btn-nota-toggle').addEventListener('click',()=>{
+  const ta=$('al-nota'); const show=ta.style.display==='none';
+  ta.style.display=show?'block':'none';
+  if (show) ta.focus();
+});
+
 $('btn-fine').addEventListener('click',()=>{
   releaseWakeLock();
+  clearSess();
   sess=null;
   $('al-session').style.display='none';
   $('al-start').style.display='block';
@@ -1883,6 +1990,7 @@ function cancelWorkout() {
   if (!confirm(msg)) return;
   stopTimer(); stopRecupero();
   releaseWakeLock();
+  clearSess();
   sess=null;
   $('giro-wrap').style.display='none';
   $('recupero-wrap').style.display='none';
@@ -1996,7 +2104,8 @@ function renderStoriaSelect() {
     const o=el('option'); o.value=ex.id; o.textContent=ex.name; sel.appendChild(o);
   });
   if (prev) sel.value=prev;
-  renderStoria(sel.value||'');
+  if (typeof vistaStoria!=='undefined' && vistaStoria==='sessione') renderStoriaPerSessione();
+  else renderStoria(sel.value||'');
 }
 
 function renderStoria(exId) {
@@ -2013,6 +2122,22 @@ function renderStoria(exId) {
   // grafico solo per singolo esercizio con almeno 2 punti e almeno un valore numerico
   const hasPeso=sorted.some(l=>l.weight!=null);
   const hasReps=sorted.some(l=>l.reps!=null);
+  if (exId) {
+    const withWeight=sorted.filter(l=>l.weight!=null && l.reps!=null);
+    if (withWeight.length) {
+      const pr=withWeight.reduce((best,l)=>{
+        if (!best) return l;
+        if (l.weight>best.weight) return l;
+        if (l.weight===best.weight && l.reps>best.reps) return l;
+        return best;
+      },null);
+      const prBox=el('div'); prBox.className='card'; prBox.style.margin='0 0 12px';
+      prBox.style.borderLeft='4px solid var(--uc)';
+      prBox.innerHTML=`<strong>🏆 Record: ${pr.weight} kg × ${pr.reps} reps</strong>
+        <div style="font-size:12px;color:#888;margin-top:2px">${fmtDate(pr.clientTs)}</div>`;
+      cont.appendChild(prBox);
+    }
+  }
   if (exId && sorted.length>=2 && (hasPeso||hasReps)) {
     cont.appendChild(buildChart(sorted, hasPeso, hasReps));
   }
@@ -2023,7 +2148,7 @@ function renderStoria(exId) {
   const t=el('table'); t.className='h-table';
   t.innerHTML=`<thead><tr>
     ${showEx?'<th>Esercizio</th>':''}
-    <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th>
+    <th>Data</th><th>Ora</th><th>Reps</th><th>Kg</th><th></th><th></th>
   </tr></thead><tbody></tbody>`;
   const tbody=t.querySelector('tbody');
   desc.forEach(log=>{
@@ -2039,6 +2164,13 @@ function renderStoria(exId) {
     const tdReps=el('td'); const strong=el('strong'); strong.textContent=log.reps??'—';
     tdReps.appendChild(strong); tr.appendChild(tdReps);
     const tdKg=el('td'); tdKg.textContent=log.weight!=null?log.weight:'—'; tr.appendChild(tdKg);
+    const tdNota=el('td');
+    if (log.nota) {
+      const bn=el('button'); bn.className='del-row'; bn.innerHTML=ICO.note; bn.title=log.nota;
+      bn.addEventListener('click',()=>alert(log.nota));
+      tdNota.appendChild(bn);
+    }
+    tr.appendChild(tdNota);
     const tdDel=el('td'); const btnDel=el('button'); btnDel.className='del-row'; btnDel.textContent='✕';
     btnDel.dataset.id=log.id; tdDel.appendChild(btnDel); tr.appendChild(tdDel);
     tbody.appendChild(tr);
@@ -2193,6 +2325,57 @@ function showTooltip(e, text) {
   tooltip.classList.add('visible');
   clearTimeout(tooltipTimer);
   tooltipTimer=setTimeout(()=>tooltip.classList.remove('visible'),2000);
+}
+
+let vistaStoria='esercizio';
+$('btn-vista-ex').addEventListener('click',()=>{
+  vistaStoria='esercizio';
+  $('btn-vista-ex').className='btn btn-dark btn-sm'; $('btn-vista-sess').className='btn btn-ghost btn-sm';
+  $('storia-sel').style.display='';
+  renderStoria($('storia-sel').value||'');
+});
+$('btn-vista-sess').addEventListener('click',()=>{
+  vistaStoria='sessione';
+  $('btn-vista-sess').className='btn btn-dark btn-sm'; $('btn-vista-ex').className='btn btn-ghost btn-sm';
+  $('storia-sel').style.display='none';
+  renderStoriaPerSessione();
+});
+function renderStoriaPerSessione() {
+  const cont=$('storia-cont'); $('print-groups').innerHTML=''; cont.innerHTML='';
+  const bySess=new Map();
+  logs.filter(l=>l.reps!=null||l.durata!=null).forEach(l=>{
+    const sid=l.sessionId||'—';
+    if (!bySess.has(sid)) bySess.set(sid,[]);
+    bySess.get(sid).push(l);
+  });
+  const sessions=[...bySess.entries()].map(([sid,ls])=>{
+    ls.sort((a,b)=>(a.clientTs||0)-(b.clientTs||0));
+    const schedaId=sid.includes('_')?sid.split('_')[0]:null;
+    const scheda=schedaId?schede.find(s=>s.id===schedaId):null;
+    return {sid,ls,ts:ls[0]?.clientTs||0,nome:scheda?.name || (sid==='import'?'Importato':'Allenamento')};
+  }).sort((a,b)=>b.ts-a.ts);
+  if (!sessions.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
+  sessions.forEach(sess=>{
+    const box=el('div'); box.className='card'; box.style.margin='0 0 12px'; box.style.borderLeft='4px solid var(--uc)';
+    const h=el('h3'); h.style.margin='0 0 2px'; h.textContent=sess.nome;
+    const sub=el('p'); sub.style.fontSize='12px'; sub.style.color='#888'; sub.style.marginBottom='8px';
+    sub.textContent=`${fmtDate(sess.ts)} · ${fmtTime(sess.ts)} · ${sess.ls.length} set`;
+    box.append(h,sub);
+    const byEx=new Map();
+    sess.ls.forEach(l=>{
+      const exName=exercises.find(e=>e.id===l.exerciseId)?.name||'—';
+      if (!byEx.has(exName)) byEx.set(exName,[]);
+      byEx.get(exName).push(l);
+    });
+    [...byEx.entries()].forEach(([name,ls])=>{
+      const row=el('p'); row.style.fontSize='13px'; row.style.margin='4px 0';
+      const parts=ls.map(l=> l.durata!=null ? `${fmtSec(l.durata)}` : `${l.reps??'—'}${l.weight!=null?'×'+l.weight+'kg':''}`);
+      const strong=el('strong'); strong.textContent=name;
+      row.append(strong, document.createTextNode(': '+parts.join(' · ')));
+      box.appendChild(row);
+    });
+    cont.appendChild(box);
+  });
 }
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
