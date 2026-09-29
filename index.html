@@ -2054,12 +2054,18 @@ function buildHint(exId) {
 
   // riga "suggerimento"
   let sugClass, sugVal;
-  if (minR>=15) {
-    sugClass='hint-aumenta';
-    sugVal=`⬆ Aumenta il peso, torna a 8-10 reps`;
+  const inc = (w != null && w >= 50) ? 2.5 : (w != null && w >= 20 ? 2 : 1);
+  const nextW = w != null ? Math.round((w + inc) * 10) / 10 : null;
+
+  if (maxR >= 15) {
+    sugClass = 'hint-aumenta';
+    sugVal = nextW != null
+      ? `⬆️ Raggiunte 15 reps! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`
+      : `⬆️ Raggiunte 15 reps! Aumenta il carico/sovraccarico (torna a 8-10 reps)`;
   } else {
-    sugClass='hint-ok';
-    sugVal=`Prova ${maxR+1} reps${w!=null?' × '+wStr:''}`;
+    sugClass = 'hint-ok';
+    const targetNextReps = Math.min(15, maxR + 1);
+    sugVal = `Prova ${targetNextReps} reps${w != null ? ' × ' + wStr : ''}`;
   }
 
   return `
@@ -2069,7 +2075,7 @@ function buildHint(exId) {
         <span class="hr-val">${ultimaVal}</span>
       </div>
       <div class="hint-row ${sugClass}">
-        <span class="hr-label">Suggerimento</span>
+        <span class="hr-label">${maxR >= 15 ? 'Progressione' : 'Suggerimento'}</span>
         <span class="hr-val">${sugVal}</span>
       </div>
     </div>`;
@@ -2112,15 +2118,36 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
   const ultimaVal=w!=null?`${repsStr} × ${w} kg`:repsStr;
 
   let goalText = '';
-  if (w != null) {
-    if (repsTarget && maxR >= repsTarget) {
-      const nextW = w >= 50 ? w + 2.5 : w + 1;
-      goalText = `🔥 Prova +1-2 kg (${nextW} kg) o fai ${maxR + 1} reps!`;
+  let goalClass = 'hint-ok';
+  const inc = (w != null && w >= 50) ? 2.5 : (w != null && w >= 20 ? 2 : 1);
+  const nextW = w != null ? Math.round((w + inc) * 10) / 10 : null;
+
+  if (maxR >= 15) {
+    // Raggiunto il tetto di 15 ripetizioni: vietato suggerire 16, 17 o 18 reps! Bisogna aumentare il carico.
+    goalClass = 'hint-aumenta';
+    if (nextW != null) {
+      goalText = `⬆️ Raggiunte 15 reps! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`;
     } else {
-      goalText = `🔥 Batti l'ultima volta: punta a ${maxR + 1} reps con ${w} kg!`;
+      goalText = `⬆️ Raggiunte 15 reps! Aggiungi sovraccarico (torna a 8-10 reps)`;
+    }
+  } else if (repsTarget && maxR >= repsTarget) {
+    // Raggiunto il target della scheda (es. 10 o 12 reps) prima di toccare 15
+    const canDoMoreReps = maxR < 14;
+    if (nextW != null) {
+      goalText = canDoMoreReps
+        ? `🔥 Target raggiunto (${maxR}/${repsTarget})! Aumenta a ${nextW} kg o fai ${maxR + 1} reps (max 15)`
+        : `🔥 Target raggiunto! Aumenta a ${nextW} kg o tocca quota 15 reps`;
+    } else {
+      goalText = `🔥 Target raggiunto (${maxR}/${repsTarget})! Prova ${Math.min(15, maxR + 1)} reps o aumenta carico`;
     }
   } else {
-    goalText = `🔥 Obiettivo: prova ${maxR + 1} reps!`;
+    // Sotto le 15 reps e sotto il target: progredisci di 1 ripetizione (mai oltre 15)
+    const targetNextReps = Math.min(15, maxR + 1);
+    if (w != null) {
+      goalText = `🔥 Batti l'ultima volta: punta a ${targetNextReps} reps con ${w} kg!`;
+    } else {
+      goalText = `🔥 Obiettivo: prova ${targetNextReps} reps!`;
+    }
   }
 
   return `<div class="hint-box">
@@ -2129,8 +2156,8 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
       <span class="hr-label">Ultima volta</span>
       <span class="hr-val">${ultimaVal}</span>
     </div>
-    <div class="hint-row hint-ok">
-      <span class="hr-label">Obiettivo</span>
+    <div class="hint-row ${goalClass}">
+      <span class="hr-label">${maxR >= 15 ? 'Progressione' : 'Obiettivo'}</span>
       <span class="hr-val">${goalText}</span>
     </div>
   </div>`;
