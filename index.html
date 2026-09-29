@@ -284,28 +284,6 @@
     .progress-bar-wrap { background: #333; height: 4px; margin: -14px -14px 14px; }
     .progress-bar-fill { background: #d0021b; height: 4px; transition: width .4s; }
 
-    #print-header { display: none; }
-    #print-groups { display: none; }
-
-    @media print {
-      body * { visibility: hidden; }
-      #tab-storia, #tab-storia * { visibility: visible; }
-      #tab-storia {
-        position: absolute; left: 0; top: 0; width: 100%; padding: 0; display: block;
-      }
-      #storia-filtro-card, #btn-pdf-storico { display: none !important; }
-      #print-header { display: block; }
-      .card { border: none; box-shadow: none; padding: 0; }
-      .del-row { display: none !important; }
-      #storia-cont .h-table th:nth-last-child(-n+2), #storia-cont .h-table td:nth-last-child(-n+2) { display: none; }
-      html, body, #tab-storia, #tab-storia * { background: #fff !important; color: #000 !important; }
-      body.print-grouped #storia-cont { display: none !important; }
-      body.print-grouped #print-groups { display: block; }
-      .pg-group { margin-bottom: 18px; break-inside: avoid; }
-      .pg-group h3 { font-size: 14px; margin: 0 0 4px; border-bottom: 1px solid #000; padding-bottom: 2px; }
-      .pg-group .h-table td, .pg-group .h-table th { border-bottom: 1px solid #ccc; }
-    }
-
     .ex-card { background: #fff; border: 1px solid #ccc; padding: 16px; margin-bottom: 14px; }
     .ex-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
     .ex-card-top .ect-icon { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0; }
@@ -520,8 +498,18 @@
     ::-webkit-scrollbar-thumb { background: #ccc; }
 
     @media print {
+      html, body {
+        background: #fff !important;
+        color: #1c1c1c !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
       body > *:not(#view-print-report) {
         display: none !important;
+      }
+      #view-print-report,
+      #view-print-report * {
+        visibility: visible !important;
       }
       #view-print-report {
         display: block !important;
@@ -530,6 +518,7 @@
         background: #fff !important;
         padding: 0 !important;
         overflow: visible !important;
+        width: 100% !important;
       }
       #view-print-report .no-print {
         display: none !important;
@@ -537,7 +526,21 @@
       #vpr-container {
         border: none !important;
         padding: 0 !important;
+        margin: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
+      }
+      .ex-card {
+        border: 1px solid #aaa !important;
+        margin-bottom: 16px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        background: #fff !important;
+        border-radius: 4px !important;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     }
   </style>
