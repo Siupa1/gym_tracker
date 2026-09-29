@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymTracker — Report Confronto Allenamenti</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f8f8f8; color: #1c1c1c; line-height: 1.4; padding: 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #ddd; padding: 24px; }
+    
+    .actions-bar {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .btn {
+      padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 4px;
+      cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-red { background: #d0021b; color: #fff; }
+    .btn-dark { background: #1c1c1c; color: #fff; }
+    .btn-ghost { background: #eee; color: #333; border: 1px solid #ccc; }
+
+    .header {
+      border-bottom: 3px solid #d0021b; padding-bottom: 14px; margin-bottom: 20px;
+      display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px;
+    }
+    .header h1 { font-size: 22px; font-weight: bold; color: #1c1c1c; letter-spacing: 0.5px; }
+    .header .subtitle { font-size: 13px; color: #666; margin-top: 2px; }
+    .header .meta { font-size: 12px; color: #888; text-align: right; }
+
+    .ex-card {
+      border: 1px solid #e0e0e0; margin-bottom: 22px; break-inside: avoid;
+      background: #fff; border-radius: 4px; overflow: hidden;
+    }
+    .ex-title {
+      background: #1c1c1c; color: #fff; padding: 10px 14px; font-size: 15px;
+      font-weight: bold; display: flex; justify-content: space-between; align-items: center;
+    }
+    .ex-title .badge {
+      font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-weight: normal;
+    }
+
+    .compare-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px;
+      background: #fafafa; border-bottom: 1px solid #eee;
+    }
+    @media (max-width: 600px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+    .col-box {
+      background: #fff; border: 1px solid #ddd; padding: 10px 12px; border-radius: 4px;
+    }
+    .col-box.highlight {
+      border-left: 4px solid #d0021b;
+    }
+    .col-box.start {
+      border-left: 4px solid #888;
+    }
+    .col-lbl { font-size: 11px; text-transform: uppercase; font-weight: bold; color: #777; margin-bottom: 4px; }
+    .col-val { font-size: 17px; font-weight: bold; color: #1c1c1c; }
+    .col-sub { font-size: 12px; color: #555; margin-top: 4px; }
+    .col-sets { font-size: 11px; color: #777; margin-top: 6px; font-family: monospace; }
+
+    .delta-badge {
+      display: inline-block; padding: 4px 8px; font-size: 12px; font-weight: bold;
+      border-radius: 4px; margin-top: 4px;
+    }
+    .delta-positive { background: #e6f4ea; color: #137333; }
+    .delta-neutral  { background: #f1f3f4; color: #5f6368; }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .history-table th, .history-table td { padding: 6px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .history-table th { background: #f0f0f0; color: #555; font-size: 11px; text-transform: uppercase; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .container { border: none; padding: 0; max-width: 100%; }
+      .actions-bar { display: none !important; }
+      .ex-card { border: 1px solid #bbb; margin-bottom: 16px; }
+      .ex-title { background: #222 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .col-box { border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="actions-bar">
+      <button class="btn btn-red" onclick="window.print()">🖨️ Stampa / Salva in PDF</button>
+      <button class="btn btn-dark" id="btn-share" style="display:none">📲 Condividi</button>
+      <button class="btn btn-ghost" onclick="window.close()">✕ Chiudi</button>
+    </div>
+
+    <div class="header">
+      <div>
+        <h1>GymTracker — Confronto Allenamenti</h1>
+        <div class="subtitle" id="rep-subtitle">Caricamento report in corso...</div>
+      </div>
+      <div class="meta" id="rep-meta"></div>
+    </div>
+
+    <div id="rep-content"></div>
+  </div>
+
+  <script>
+    (function() {
+      let data = null;
+      try {
+        const raw = localStorage.getItem('gymtracker_export_data');
+        if (raw) data = JSON.parse(raw);
+      } catch(e) {
+        console.warn('Errore lettura dati report:', e);
+      }
+
+      if (!data || !data.items || !data.items.length) {
+        document.getElementById('rep-subtitle').textContent = 'Nessun dato trovato per il confronto.';
+        document.getElementById('rep-content').innerHTML = '<p style="padding:20px;text-align:center;color:#888">Non ci sono serie registrate da mostrare. Torna all\'app e seleziona lo Storico.</p>';
+        return;
+      }
+
+      document.getElementById('rep-subtitle').textContent = `Atleta: ${data.athlete || 'Atleta'} · Report ordinato per Esercizio`;
+      document.getElementById('rep-meta').innerHTML = `<div>Data: ${data.today || new Date().toLocaleDateString('it-IT')}</div><div>${data.items.length} esercizi analizzati</div>`;
+
+      const content = document.getElementById('rep-content');
+      content.innerHTML = '';
+
+      data.items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'ex-card';
+
+        // Delta
+        let deltaHtml = '';
+        if (item.diffWeight != null) {
+          const sign = item.diffWeight > 0 ? '+' : '';
+          const cls = item.diffWeight > 0 ? 'delta-positive' : 'delta-neutral';
+          deltaHtml = `<span class="delta-badge ${cls}">${sign}${item.diffWeight} kg (${sign}${item.diffPercent}%) rispetto all'inizio</span>`;
+        }
+
+        // Box Oggi (più recente)
+        const todayBox = item.latestStats ? `
+          <div class="col-box highlight">
+            <div class="col-lbl">🔴 Oggi / Più recente (${item.latestStats.dateStr})</div>
+            <div class="col-val">${item.latestStats.maxWeight ? item.latestStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
+            <div class="col-sub">1RM stimato: <strong>${item.latestStats.max1RM || '—'} kg</strong> · ${item.latestStats.count} serie</div>
+            <div class="col-sets">${item.latestStats.setsStr}</div>
+            ${item.latestStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.latestStats.notes}</div>` : ''}
+          </div>
+        ` : '';
+
+        // Box Inizio
+        const startBox = item.firstStats ? `
+          <div class="col-box start">
+            <div class="col-lbl">⚪ Data di inizio (${item.firstStats.dateStr})</div>
+            <div class="col-val">${item.firstStats.maxWeight ? item.firstStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
+            <div class="col-sub">1RM stimato: <strong>${item.firstStats.max1RM || '—'} kg</strong> · ${item.firstStats.count} serie</div>
+            <div class="col-sets">${item.firstStats.setsStr}</div>
+            ${item.firstStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.firstStats.notes}</div>` : ''}
+          </div>
+        ` : '';
+
+        card.innerHTML = `
+          <div class="ex-title">
+            <span>🏋️ ${item.exercise.name}</span>
+            <span class="badge">${item.totalSessions} sessioni registrate</span>
+          </div>
+          <div class="compare-grid">
+            ${todayBox}
+            ${startBox}
+          </div>
+          ${deltaHtml ? `<div style="padding:8px 14px;background:#f5fbf7;border-bottom:1px solid #e0e0e0">${deltaHtml}</div>` : ''}
+        `;
+
+        content.appendChild(card);
+      });
+
+      if (navigator.share) {
+        const btnShare = document.getElementById('btn-share');
+        btnShare.style.display = 'inline-flex';
+        btnShare.onclick = () => {
+          navigator.share({
+            title: 'GymTracker Confronto',
+            text: data.summaryText || 'Report confronto allenamenti GymTracker'
+          }).catch(() => {});
+        };
+      }
+    })();
+  </script>
+</body>
+</html>

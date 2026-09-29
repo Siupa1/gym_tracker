@@ -3059,87 +3059,170 @@ function renderStoriaPerSessione() {
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
 
-/* ════════════════════ ESPORTA STORICO (MODAL & AZIONI) ════════════════════ */
+/* ════════════════════ ESPORTA STORICO (CONFRONTO PER ESERCIZIO) ════════════════════ */
 let currentExportData = {
   exName: '',
-  showEx: true,
-  desc: [],
+  items: [],
   summaryText: '',
   csvContent: '',
-  rowsHtml: '',
   athlete: 'Atleta',
   today: ''
 };
 
 function prepareExportData() {
-  const exId = $('storia-sel').value || '';
-  const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
-  const filtered = exId
-    ? logs.filter(l => l.exerciseId === exId)
-    : logs.filter(l => l.reps);
-
-  const desc = [...filtered].sort((a,b) => (b.clientTs || 0) - (a.clientTs || 0));
-  const showEx = !exId;
+  const selectedExId = $('storia-sel').value || '';
   const athlete = currentUser?.nome || 'Atleta';
   const today = new Date().toLocaleDateString('it-IT');
 
-  // Testo formattato per condivisione (WhatsApp, Note, ecc.)
-  let text = `🏋️ GYMTRACKER — STORICO ALLENAMENTI\n`;
-  text += `👤 Atleta: ${athlete}\n`;
-  text += `📋 Report: ${exName}\n`;
-  text += `📅 Esportato: ${today}\n`;
-  text += `📊 Totale serie: ${desc.length}\n`;
-  text += `──────────────────────\n`;
+  const targetExercises = selectedExId
+    ? exercises.filter(e => e.id === selectedExId)
+    : [...exercises].sort((a,b) => a.name.localeCompare(b.name, 'it'));
 
-  if (!desc.length) {
-    text += `(Nessun dato registrato)`;
+  const items = [];
+
+  targetExercises.forEach(ex => {
+    const exLogs = logs.filter(l => l.exerciseId === ex.id && (l.reps != null || l.durata != null));
+    if (!exLogs.length) return;
+
+    // Ordine cronologico crescente (dal più vecchio al più recente)
+    const sorted = [...exLogs].sort((a,b) => (a.clientTs || 0) - (b.clientTs || 0));
+
+    // Raggruppa per data di sessione
+    const sessionMap = new Map();
+    sorted.forEach(l => {
+      const dateKey = fmtDate(l.clientTs);
+      if (!sessionMap.has(dateKey)) {
+        sessionMap.set(dateKey, {
+          dateStr: dateKey,
+          ts: l.clientTs,
+          logs: []
+        });
+      }
+      sessionMap.get(dateKey).logs.push(l);
+    });
+
+    const sessions = [...sessionMap.values()];
+    if (!sessions.length) return;
+
+    const firstSession = sessions[0];
+    const latestSession = sessions[sessions.length - 1];
+    const prevSession = sessions.length > 1 ? sessions[sessions.length - 2] : null;
+
+    const getStats = (sess) => {
+      if (!sess) return null;
+      let maxWeight = 0;
+      let max1RM = 0;
+      let totalReps = 0;
+      const setsStr = sess.logs.map(l => {
+        const r = l.reps != null ? l.reps : (l.durata ? fmtSec(l.durata) : '—');
+        const w = l.weight != null ? `${l.weight}kg` : '';
+        if (l.weight != null) {
+          if (l.weight > maxWeight) maxWeight = l.weight;
+          if (l.reps != null) {
+            const cur1RM = l.weight * (1 + l.reps / 30);
+            if (cur1RM > max1RM) max1RM = cur1RM;
+          }
+        }
+        if (l.reps != null) totalReps += l.reps;
+        return `${r}${w ? ' × ' + w : ''}`;
+      }).join(' · ');
+
+      return {
+        dateStr: sess.dateStr,
+        count: sess.logs.length,
+        setsStr,
+        maxWeight,
+        max1RM: Math.round(max1RM),
+        totalReps,
+        notes: sess.logs.map(l => l.nota).filter(Boolean).join('; ')
+      };
+    };
+
+    const firstStats = getStats(firstSession);
+    const latestStats = getStats(latestSession);
+    const prevStats = getStats(prevSession);
+
+    let diffWeight = null;
+    let diffPercent = null;
+    if (firstStats && latestStats && sessions.length > 1) {
+      if (firstStats.maxWeight > 0 && latestStats.maxWeight > 0) {
+        diffWeight = Math.round((latestStats.maxWeight - firstStats.maxWeight) * 10) / 10;
+        diffPercent = Math.round((diffWeight / firstStats.maxWeight) * 100);
+      }
+    }
+
+    items.push({
+      exercise: ex,
+      totalSessions: sessions.length,
+      firstStats,
+      latestStats,
+      prevStats,
+      diffWeight,
+      diffPercent
+    });
+  });
+
+  const exName = selectedExId ? (exercises.find(e => e.id === selectedExId)?.name || '') : 'Tutti gli esercizi';
+
+  // Testo per condivisione / copia
+  let text = `🏋️ GYMTRACKER — CONFRONTO ALLENAMENTI\n`;
+  text += `👤 Atleta: ${athlete}\n`;
+  text += `📅 Esportato il: ${today}\n`;
+  text += `📋 Esercizi: ${items.length} analizzati in ordine alfabetico\n`;
+  text += `────────────────────────────────────\n\n`;
+
+  if (!items.length) {
+    text += `(Nessun dato registrato da confrontare)`;
   } else {
-    desc.forEach(l => {
-      const ex = exercises.find(e => e.id === l.exerciseId);
-      const d = fmtDate(l.clientTs);
-      const t = fmtTime(l.clientTs);
-      const nm = showEx ? `[${ex?.name || '—'}] ` : '';
-      const r = l.reps != null ? `${l.reps} reps` : '';
-      const w = l.weight != null ? ` @ ${l.weight}kg` : '';
-      const n = l.nota ? ` (Nota: ${l.nota})` : '';
-      text += `• ${d} ${t} - ${nm}${r}${w}${n}\n`;
+    items.forEach(it => {
+      text += `📌 ${it.exercise.name.toUpperCase()} (${it.totalSessions} sessioni)\n`;
+      if (it.latestStats) {
+        text += `🔴 OGGI/ULTIMO (${it.latestStats.dateStr}):\n`;
+        text += `   Serie: ${it.latestStats.setsStr}\n`;
+        if (it.latestStats.maxWeight) text += `   Carico max: ${it.latestStats.maxWeight} kg (1RM stimato: ${it.latestStats.max1RM} kg)\n`;
+      }
+      if (it.firstStats && it.totalSessions > 1) {
+        text += `⚪ DATA DI INIZIO (${it.firstStats.dateStr}):\n`;
+        text += `   Serie: ${it.firstStats.setsStr}\n`;
+        if (it.firstStats.maxWeight) text += `   Carico iniziale: ${it.firstStats.maxWeight} kg (1RM stimato: ${it.firstStats.max1RM} kg)\n`;
+      }
+      if (it.diffWeight != null) {
+        const sign = it.diffWeight > 0 ? '+' : '';
+        text += `🚀 PROGRESSO DALL'INIZIO: ${sign}${it.diffWeight} kg (${sign}${it.diffPercent}%)\n`;
+      }
+      text += `────────────────────────────────────\n\n`;
     });
   }
 
   // CSV
-  let csv = '\uFEFFData;Ora;Esercizio;Ripetizioni;Carico_Kg;Note\n';
-  desc.forEach(l => {
-    const ex = exercises.find(e => e.id === l.exerciseId);
-    const d = fmtDate(l.clientTs);
-    const t = fmtTime(l.clientTs);
-    const name = (ex?.name || '—').replace(/;/g, ',');
-    const reps = l.reps != null ? l.reps : '';
-    const weight = l.weight != null ? l.weight : '';
-    const nota = (l.nota || '').replace(/[\r\n;]/g, ' ');
-    csv += `${d};${t};${name};${reps};${weight};${nota}\n`;
+  let csv = '\uFEFFEsercizio;Data_Inizio;Carico_Max_Inizio_Kg;Serie_Inizio;Data_Oggi;Carico_Max_Oggi_Kg;Serie_Oggi;Differenza_Kg;Differenza_Percentuale\n';
+  items.forEach(it => {
+    const name = it.exercise.name.replace(/;/g, ',');
+    const sDate = it.firstStats?.dateStr || '';
+    const sMax = it.firstStats?.maxWeight || '';
+    const sSets = (it.firstStats?.setsStr || '').replace(/;/g, ',');
+    const lDate = it.latestStats?.dateStr || '';
+    const lMax = it.latestStats?.maxWeight || '';
+    const lSets = (it.latestStats?.setsStr || '').replace(/;/g, ',');
+    const dKg = it.diffWeight != null ? it.diffWeight : '';
+    const dPerc = it.diffPercent != null ? `${it.diffPercent}%` : '';
+    csv += `${name};${sDate};${sMax};${sSets};${lDate};${lMax};${lSets};${dKg};${dPerc}\n`;
   });
 
-  // Righe HTML per stampa
-  let rowsHtml = '';
-  desc.forEach(l => {
-    const ex = exercises.find(e => e.id === l.exerciseId);
-    const d = fmtDate(l.clientTs);
-    const t = fmtTime(l.clientTs);
-    const name = ex?.name || '—';
-    const reps = l.reps != null ? `<strong>${l.reps}</strong>` : '—';
-    const weight = l.weight != null ? `<strong>${l.weight}</strong> kg` : '—';
-    const nota = l.nota || '—';
-    rowsHtml += `<tr><td>${d}</td><td>${t}</td>${showEx ? `<td>${name}</td>` : ''}<td>${reps}</td><td>${weight}</td><td>${nota}</td></tr>`;
-  });
-
-  currentExportData = { exName, showEx, desc, summaryText: text, csvContent: csv, rowsHtml, athlete, today };
+  currentExportData = { exName, items, summaryText: text, csvContent: csv, athlete, today };
 }
 
 function openExportModal() {
   prepareExportData();
-  $('me-title').textContent = `Esporta: ${currentExportData.exName}`;
-  $('me-sub').textContent = `${currentExportData.desc.length} serie registrate · Atleta: ${currentExportData.athlete}`;
+  $('me-title').textContent = `Confronto: ${currentExportData.exName}`;
+  $('me-sub').textContent = `${currentExportData.items.length} esercizi · Ordine alfabetico (Oggi vs Inizio)`;
   $('me-preview').textContent = currentExportData.summaryText;
+
+  // Salva subito nei dati locali per report.html
+  try {
+    localStorage.setItem('gymtracker_export_data', JSON.stringify(currentExportData));
+  } catch(e) {}
+
   $('modal-export').classList.add('open');
 }
 
@@ -3157,13 +3240,13 @@ $('modal-export').addEventListener('click', (e) => {
   if (e.target === $('modal-export')) closeExportModal();
 });
 
-// 1. Condividi / Invia
+// 1. Condividi / Invia (WhatsApp / Note / Mail)
 $('me-btn-share').addEventListener('click', async () => {
   const { summaryText, exName } = currentExportData;
   if (navigator.share) {
     try {
       await navigator.share({
-        title: `GymTracker - ${exName}`,
+        title: `GymTracker Confronto - ${exName}`,
         text: summaryText
       });
       return;
@@ -3171,12 +3254,21 @@ $('me-btn-share').addEventListener('click', async () => {
       if (err.name === 'AbortError') return;
     }
   }
-  // Fallback se share non supportato: copia negli appunti
+  // Fallback: copia negli appunti
   try {
-    await navigator.clipboard.writeText(summaryText);
-    alert('✓ Storico copiato negli appunti! Incollalo su WhatsApp o dove desideri.');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(summaryText);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = summaryText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    alert('✓ Report copiato negli appunti! Incollalo su WhatsApp o nelle Note.');
   } catch(e) {
-    prompt('Copia il testo dello storico:', summaryText);
+    prompt('Copia il testo del report:', summaryText);
   }
 });
 
@@ -3203,8 +3295,8 @@ $('me-btn-copy').addEventListener('click', async () => {
 // 3. Scarica CSV (Excel)
 $('me-btn-csv').addEventListener('click', () => {
   const { csvContent, exName } = currentExportData;
-  const safeName = (exName || 'Tutti').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
-  const fileName = `GymTracker_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
+  const safeName = (exName || 'Confronto').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
+  const fileName = `GymTracker_Confronto_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3216,71 +3308,20 @@ $('me-btn-csv').addEventListener('click', () => {
   alert(`✓ File Excel/CSV "${fileName}" scaricato!`);
 });
 
-// 4. Stampa / PDF in nuova finestra pulita
+// 4. Stampa / PDF: apre /report.html (compatibile 100% con iOS Safari, PWA e Desktop)
 $('me-btn-print').addEventListener('click', () => {
-  const { exName, showEx, rowsHtml, athlete, today, desc } = currentExportData;
-  const pWin = window.open('', '_blank');
-  if (pWin) {
-    pWin.document.write(`
-      <!DOCTYPE html>
-      <html lang="it">
-      <head>
-        <meta charset="UTF-8">
-        <title>GymTracker — ${exName}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; color: #1c1c1c; background: #fff; }
-          .header { border-bottom: 3px solid #d0021b; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
-          h1 { font-size: 20px; margin: 0 0 4px; color: #1c1c1c; }
-          .sub { font-size: 13px; color: #666; margin: 0; }
-          .meta { font-size: 12px; color: #888; text-align: right; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-          th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
-          th { background: #1c1c1c; color: #fff; font-size: 12px; }
-          tr:nth-child(even) { background: #fbfbfb; }
-          .btn-bar { margin-bottom: 20px; display: flex; gap: 10px; }
-          .btn { background: #d0021b; color: #fff; border: none; padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-          .btn-close { background: #eee; color: #333; border: 1px solid #ccc; padding: 10px 14px; font-size: 14px; border-radius: 4px; cursor: pointer; }
-          @media print {
-            .btn-bar { display: none !important; }
-            body { padding: 0; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="btn-bar">
-          <button class="btn" onclick="window.print()">🖨️ Stampa / Salva in PDF</button>
-          <button class="btn-close" onclick="window.close()">✕ Chiudi</button>
-        </div>
-        <div class="header">
-          <div>
-            <h1>GymTracker — Storico Allenamenti</h1>
-            <p class="sub">Atleta: <strong>${athlete}</strong> · Filtro: <strong>${exName}</strong></p>
-          </div>
-          <div class="meta">
-            <div>Esportato: ${today}</div>
-            <div>${desc.length} serie</div>
-          </div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th><th>Ora</th>${showEx ? '<th>Esercizio</th>' : ''}<th>Reps</th><th>Carico (kg)</th><th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml || '<tr><td colspan="6" style="text-align:center">Nessun log trovato</td></tr>'}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `);
-    pWin.document.close();
-    pWin.focus();
-  } else {
-    // Fallback: stampa la pagina corrente
-    window.print();
-  }
+  try {
+    localStorage.setItem('gymtracker_export_data', JSON.stringify(currentExportData));
+  } catch(e) {}
+
+  // Apri /report.html in un nuovo tab/finestra (in iOS standalone apre Safari senza crashare l'app)
+  const a = document.createElement('a');
+  a.href = '/report.html';
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 400);
 });
 
 </script>
