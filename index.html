@@ -785,7 +785,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <h2 style="margin:0">Log</h2>
-      <button class="btn btn-ghost btn-sm" id="btn-pdf-storico">📄 Esporta PDF</button>
+      <button class="btn btn-ghost btn-sm" id="btn-pdf-storico" type="button">📄 Esporta PDF</button>
     </div>
     <div id="print-header">
       <h2 id="ph-title" style="margin-bottom:2px"></h2>
@@ -1305,19 +1305,45 @@ function makeIcon(ex, size) {
 }
 
 /* ════════════════════ TABS ════════════════════ */
-document.querySelectorAll('nav.tabs button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    const pg=$(btn.dataset.tab);
-    if (pg) pg.classList.add('active');
-    const t=btn.dataset.tab;
-    if (t==='tab-schede')  renderSchedeList();
-    if (t==='tab-al')      renderAlStart();
-    if (t==='tab-storia')  renderStoriaSelect();
+function switchTab(tabId, updateHash = true) {
+  const validTabs = ['tab-ex', 'tab-schede', 'tab-al', 'tab-storia'];
+  if (!validTabs.includes(tabId)) tabId = 'tab-ex';
+
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.toggle('active', p.id === tabId);
+  });
+
+  try {
+    localStorage.setItem('gym_active_tab', tabId);
+    if (updateHash && window.location.hash !== '#' + tabId) {
+      history.replaceState(null, '', '#' + tabId);
+    }
+  } catch(e) {}
+
+  if (tabId === 'tab-schede') renderSchedeList();
+  if (tabId === 'tab-al')     renderAlStart();
+  if (tabId === 'tab-storia') renderStoriaSelect();
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    switchTab(btn.dataset.tab);
   });
 });
+
+window.addEventListener('hashchange', () => {
+  const h = window.location.hash.replace('#', '');
+  if (h) switchTab(h, false);
+});
+
+// Ripristina subito l'ultimo tab attivo da memoria / hash
+const savedTab = window.location.hash.replace('#', '') || localStorage.getItem('gym_active_tab');
+if (savedTab && ['tab-ex', 'tab-schede', 'tab-al', 'tab-storia'].includes(savedTab) && savedTab !== 'tab-ex') {
+  setTimeout(() => switchTab(savedTab, false), 0);
+}
 
 /* ════════════════════ ESERCIZI ════════════════════ */
 let pendingImg=null;
@@ -2997,34 +3023,42 @@ function renderStoriaPerSessione() {
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
 
 /* ── esporta storico in PDF (via stampa del browser) ── */
-$('btn-pdf-storico').addEventListener('click', () => {
-  const exId=$('storia-sel').value||'';
-  const exName=exId ? (exercises.find(e=>e.id===exId)?.name || '') : 'Tutti gli esercizi';
-  $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome||''}`;
+$('btn-pdf-storico').addEventListener('click', (e) => {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const exId = $('storia-sel').value || '';
+  const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
+  $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome || ''}`;
   $('ph-sub').textContent = `${exName} · esportato il ${new Date().toLocaleDateString('it-IT')}`;
 
-  document.body.classList.toggle('print-grouped', !exId);
-  window.addEventListener('afterprint',()=>document.body.classList.remove('print-grouped'),{once:true});
-  const isIOS = /iP(hone|od|ad)/.test(navigator.platform)
-    || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-  const isStandalone = window.navigator.standalone === true
-    || window.matchMedia('(display-mode: standalone)').matches;
+  // Assicura che l'app rimanga ancorata sul tab Storico anche dopo eventuale refresh del browser
+  try {
+    localStorage.setItem('gym_active_tab', 'tab-storia');
+    history.replaceState(null, '', '#tab-storia');
+  } catch (err) {}
 
-  if (isIOS && isStandalone) {
-    // su iOS la stampa (e quindi l'export PDF) non funziona nelle app aperte dall'icona Home:
-    // si apre Safari, dove la stampa funziona normalmente
-    alert('Su iPhone la stampa non funziona nell\'app aperta dalla Home. Si aprirà Safari: da lì premi di nuovo "Esporta PDF", poi nella finestra di stampa apri l\'anteprima a schermo intero e usa l\'icona di condivisione → "Salva su File" (PDF).');
+  document.body.classList.toggle('print-grouped', !exId);
+
+  const cleanup = () => {
+    document.body.classList.remove('print-grouped');
+    switchTab('tab-storia', false);
+  };
+
+  window.addEventListener('afterprint', cleanup, { once: true });
+
+  // Timeout breve per permettere al browser di aggiornare il layout CSS di stampa prima di lanciare la finestra
+  setTimeout(() => {
     try {
-      window.open(location.href, '_blank');
-    } catch (e) {
-      console.warn('Cannot open window in iframe environment:', e);
+      window.print();
+    } catch (err) {
+      console.warn('Errore window.print:', err);
+      cleanup();
+      alert('Impossibile aprire la stampa del browser da questo dispositivo. Puoi fare uno screenshot o esportare i dati da Impostazioni.');
     }
-    return;
-  }
-  if (isIOS) {
-    alert('Nella finestra di stampa che si apre: tocca l\'anteprima per aprirla a schermo intero, poi usa l\'icona di condivisione in alto e scegli "Salva su File" per ottenere il PDF.');
-  }
-  window.print();
+  }, 50);
 });
 
 </script>
