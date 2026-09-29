@@ -15,8 +15,6 @@
   <meta name="description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
   <meta property="og:title" content="GymTracker" />
   <meta property="og:description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
-  <script src="/vendor/jspdf.umd.min.js"></script>
-  <script src="/vendor/jspdf.plugin.autotable.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* disabilita evidenziazione tap blu iOS */
@@ -846,6 +844,43 @@
       <button class="btn btn-ghost" id="mb-cancel">Annulla</button>
       <button class="btn btn-red"   id="mb-save">Aggiungi blocco</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ESPORTA STORICO ══ -->
+<div class="modal-bg" id="modal-export">
+  <div class="modal-box" style="border-top:4px solid var(--uc)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0;font-size:16px" id="me-title">Esporta Storico</h3>
+      <button type="button" class="btn btn-ghost btn-sm" id="me-close" style="padding:4px 10px;min-height:32px">✕ Chiudi</button>
+    </div>
+    <p id="me-sub" style="font-size:12px;color:#777;margin-bottom:14px"></p>
+
+    <div class="vgap" style="gap:10px;margin-bottom:14px">
+      <!-- 1. Condividi / Invia (WhatsApp, Note, ecc.) -->
+      <button type="button" class="btn btn-red btn-full" id="me-btn-share" style="min-height:48px;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px">
+        📲 Invia / Condividi (WhatsApp / Note)
+      </button>
+      
+      <!-- 2. Copia Testo -->
+      <button type="button" class="btn btn-dark btn-full" id="me-btn-copy" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        📋 Copia per Messaggi o Appunti
+      </button>
+
+      <!-- 3. Scarica File Excel / CSV -->
+      <button type="button" class="btn btn-ghost btn-full" id="me-btn-csv" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        📊 Scarica File Excel / CSV
+      </button>
+
+      <!-- 4. Apri Foglio Stampabile / PDF -->
+      <button type="button" class="btn btn-ghost btn-full" id="me-btn-print" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        🖨️ Apri Scheda Stampabile / PDF
+      </button>
+    </div>
+
+    <!-- Anteprima del report -->
+    <div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:bold">ANTEPRIMA DATI:</div>
+    <div style="background:#f7f7f7;border:1px solid #ddd;padding:10px;font-size:11px;font-family:monospace;max-height:160px;overflow-y:auto;white-space:pre-wrap;border-radius:3px;color:#333" id="me-preview"></div>
   </div>
 </div>
 
@@ -3024,187 +3059,228 @@ function renderStoriaPerSessione() {
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
 
-/* ── esporta storico in vero PDF (senza window.print né ricaricamento di pagina) ── */
-async function exportHistoryPDF() {
-  const btn = $('btn-pdf-storico');
-  const origHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Genero PDF...';
-  }
+/* ════════════════════ ESPORTA STORICO (MODAL & AZIONI) ════════════════════ */
+let currentExportData = {
+  exName: '',
+  showEx: true,
+  desc: [],
+  summaryText: '',
+  csvContent: '',
+  rowsHtml: '',
+  athlete: 'Atleta',
+  today: ''
+};
 
-  try {
-    const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-    if (!jsPDFClass) {
-      throw new Error('Modulo PDF in caricamento, riprova tra qualche istante.');
-    }
+function prepareExportData() {
+  const exId = $('storia-sel').value || '';
+  const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
+  const filtered = exId
+    ? logs.filter(l => l.exerciseId === exId)
+    : logs.filter(l => l.reps);
 
-    const exId = $('storia-sel').value || '';
-    const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
-    const filtered = exId
-      ? logs.filter(l => l.exerciseId === exId)
-      : logs.filter(l => l.reps);
+  const desc = [...filtered].sort((a,b) => (b.clientTs || 0) - (a.clientTs || 0));
+  const showEx = !exId;
+  const athlete = currentUser?.nome || 'Atleta';
+  const today = new Date().toLocaleDateString('it-IT');
 
-    if (!filtered.length) {
-      alert('Nessun dato registrato nello storico da esportare.');
-      return;
-    }
+  // Testo formattato per condivisione (WhatsApp, Note, ecc.)
+  let text = `🏋️ GYMTRACKER — STORICO ALLENAMENTI\n`;
+  text += `👤 Atleta: ${athlete}\n`;
+  text += `📋 Report: ${exName}\n`;
+  text += `📅 Esportato: ${today}\n`;
+  text += `📊 Totale serie: ${desc.length}\n`;
+  text += `──────────────────────\n`;
 
-    // Dal più recente al meno recente
-    const desc = [...filtered].sort((a,b) => (b.clientTs || 0) - (a.clientTs || 0));
-
-    const doc = new jsPDFClass({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const userColor = currentUser?.colore || '#d0021b';
-    const userName = currentUser?.nome || 'Utente';
-
-    // Barra superiore scura #1c1c1c
-    doc.setFillColor(28, 28, 28);
-    doc.rect(0, 0, 210, 22, 'F');
-
-    // Riga d'accento col colore del profilo
-    const hex = userColor.replace('#','');
-    const r = parseInt(hex.substring(0,2), 16) || 208;
-    const g = parseInt(hex.substring(2,4), 16) || 2;
-    const b = parseInt(hex.substring(4,6), 16) || 27;
-    doc.setFillColor(r, g, b);
-    doc.rect(0, 22, 210, 2.5, 'F');
-
-    // Logo & App Name
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('GymTracker', 14, 14);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(210, 210, 210);
-    doc.text(`Storico Allenamenti · Atleta: ${userName}`, 55, 14);
-
-    // Data export
-    const nowStr = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    doc.setFontSize(8.5);
-    doc.setTextColor(180, 180, 180);
-    doc.text(`Data: ${nowStr}`, 196, 14, { align: 'right' });
-
-    // Intestazione filtro
-    doc.setTextColor(28, 28, 28);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text(`Report: ${exName}`, 14, 32);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(110, 110, 110);
-    doc.text(`Totale registrazioni: ${desc.length} serie eseguite`, 14, 37);
-
-    // Colonne e dati tabella
-    const showEx = !exId;
-    const headers = showEx
-      ? [['Data', 'Ora', 'Esercizio', 'Ripetizioni', 'Carico (kg)', 'Note']]
-      : [['Data', 'Ora', 'Ripetizioni', 'Carico (kg)', 'Note']];
-
-    const bodyData = desc.map(l => {
+  if (!desc.length) {
+    text += `(Nessun dato registrato)`;
+  } else {
+    desc.forEach(l => {
       const ex = exercises.find(e => e.id === l.exerciseId);
-      const dStr = fmtDate(l.clientTs);
-      const tStr = fmtTime(l.clientTs);
-      const rStr = l.reps != null ? String(l.reps) : '—';
-      const wStr = l.weight != null ? `${l.weight} kg` : '—';
-      const nStr = l.nota ? String(l.nota) : '';
-
-      return showEx
-        ? [dStr, tStr, ex?.name || '—', rStr, wStr, nStr]
-        : [dStr, tStr, rStr, wStr, nStr];
+      const d = fmtDate(l.clientTs);
+      const t = fmtTime(l.clientTs);
+      const nm = showEx ? `[${ex?.name || '—'}] ` : '';
+      const r = l.reps != null ? `${l.reps} reps` : '';
+      const w = l.weight != null ? ` @ ${l.weight}kg` : '';
+      const n = l.nota ? ` (Nota: ${l.nota})` : '';
+      text += `• ${d} ${t} - ${nm}${r}${w}${n}\n`;
     });
-
-    if (typeof doc.autoTable === 'function') {
-      doc.autoTable({
-        startY: 42,
-        head: headers,
-        body: bodyData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [28, 28, 28],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 9,
-          halign: 'left'
-        },
-        styles: {
-          fontSize: 8.5,
-          cellPadding: 3,
-          textColor: [35, 35, 35]
-        },
-        alternateRowStyles: {
-          fillColor: [248, 248, 248]
-        },
-        didDrawPage: function(data) {
-          const pageCount = doc.internal.getNumberOfPages();
-          doc.setFontSize(8);
-          doc.setTextColor(140, 140, 140);
-          doc.text('GymTracker — Schede & Allenamenti', 14, 290);
-          doc.text(`Pagina ${data.pageNumber} di ${pageCount}`, 196, 290, { align: 'right' });
-        }
-      });
-    } else {
-      // Fallback testo formattato
-      let y = 46;
-      bodyData.forEach(row => {
-        if (y > 280) { doc.addPage(); y = 20; }
-        doc.text(row.join('  |  '), 14, y);
-        y += 7;
-      });
-    }
-
-    const cleanName = (exName || 'Tutti').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
-    const fileName = `GymTracker_${cleanName}_${new Date().toISOString().slice(0,10)}.pdf`;
-
-    const blob = doc.output('blob');
-    const file = new File([blob], fileName, { type: 'application/pdf' });
-
-    // Se il dispositivo supporta la condivisione file nativa (iOS / Android share sheet)
-    let shared = false;
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: fileName,
-          text: `Storico allenamento GymTracker - ${exName}`
-        });
-        shared = true;
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          return; // L'utente ha chiuso il foglio di condivisione senza errori
-        }
-      }
-    }
-
-    if (!shared) {
-      // Download diretto del file
-      doc.save(fileName);
-      alert(`✓ PDF "${fileName}" scaricato con successo!`);
-    }
-  } catch (err) {
-    console.error('Errore export PDF:', err);
-    alert('Errore durante la creazione del PDF: ' + (err?.message || err));
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origHtml;
-    }
   }
+
+  // CSV
+  let csv = '\uFEFFData;Ora;Esercizio;Ripetizioni;Carico_Kg;Note\n';
+  desc.forEach(l => {
+    const ex = exercises.find(e => e.id === l.exerciseId);
+    const d = fmtDate(l.clientTs);
+    const t = fmtTime(l.clientTs);
+    const name = (ex?.name || '—').replace(/;/g, ',');
+    const reps = l.reps != null ? l.reps : '';
+    const weight = l.weight != null ? l.weight : '';
+    const nota = (l.nota || '').replace(/[\r\n;]/g, ' ');
+    csv += `${d};${t};${name};${reps};${weight};${nota}\n`;
+  });
+
+  // Righe HTML per stampa
+  let rowsHtml = '';
+  desc.forEach(l => {
+    const ex = exercises.find(e => e.id === l.exerciseId);
+    const d = fmtDate(l.clientTs);
+    const t = fmtTime(l.clientTs);
+    const name = ex?.name || '—';
+    const reps = l.reps != null ? `<strong>${l.reps}</strong>` : '—';
+    const weight = l.weight != null ? `<strong>${l.weight}</strong> kg` : '—';
+    const nota = l.nota || '—';
+    rowsHtml += `<tr><td>${d}</td><td>${t}</td>${showEx ? `<td>${name}</td>` : ''}<td>${reps}</td><td>${weight}</td><td>${nota}</td></tr>`;
+  });
+
+  currentExportData = { exName, showEx, desc, summaryText: text, csvContent: csv, rowsHtml, athlete, today };
+}
+
+function openExportModal() {
+  prepareExportData();
+  $('me-title').textContent = `Esporta: ${currentExportData.exName}`;
+  $('me-sub').textContent = `${currentExportData.desc.length} serie registrate · Atleta: ${currentExportData.athlete}`;
+  $('me-preview').textContent = currentExportData.summaryText;
+  $('modal-export').classList.add('open');
+}
+
+function closeExportModal() {
+  $('modal-export').classList.remove('open');
 }
 
 $('btn-pdf-storico').addEventListener('click', (e) => {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  openExportModal();
+});
+
+$('me-close').addEventListener('click', closeExportModal);
+$('modal-export').addEventListener('click', (e) => {
+  if (e.target === $('modal-export')) closeExportModal();
+});
+
+// 1. Condividi / Invia
+$('me-btn-share').addEventListener('click', async () => {
+  const { summaryText, exName } = currentExportData;
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `GymTracker - ${exName}`,
+        text: summaryText
+      });
+      return;
+    } catch(err) {
+      if (err.name === 'AbortError') return;
+    }
   }
-  exportHistoryPDF();
+  // Fallback se share non supportato: copia negli appunti
+  try {
+    await navigator.clipboard.writeText(summaryText);
+    alert('✓ Storico copiato negli appunti! Incollalo su WhatsApp o dove desideri.');
+  } catch(e) {
+    prompt('Copia il testo dello storico:', summaryText);
+  }
+});
+
+// 2. Copia Testo
+$('me-btn-copy').addEventListener('click', async () => {
+  const { summaryText } = currentExportData;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(summaryText);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = summaryText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    alert('✓ Copiato negli appunti! Puoi incollarlo su WhatsApp, Messaggi o Note.');
+  } catch(e) {
+    prompt('Copia il testo:', summaryText);
+  }
+});
+
+// 3. Scarica CSV (Excel)
+$('me-btn-csv').addEventListener('click', () => {
+  const { csvContent, exName } = currentExportData;
+  const safeName = (exName || 'Tutti').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
+  const fileName = `GymTracker_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
+  alert(`✓ File Excel/CSV "${fileName}" scaricato!`);
+});
+
+// 4. Stampa / PDF in nuova finestra pulita
+$('me-btn-print').addEventListener('click', () => {
+  const { exName, showEx, rowsHtml, athlete, today, desc } = currentExportData;
+  const pWin = window.open('', '_blank');
+  if (pWin) {
+    pWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="it">
+      <head>
+        <meta charset="UTF-8">
+        <title>GymTracker — ${exName}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; color: #1c1c1c; background: #fff; }
+          .header { border-bottom: 3px solid #d0021b; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+          h1 { font-size: 20px; margin: 0 0 4px; color: #1c1c1c; }
+          .sub { font-size: 13px; color: #666; margin: 0; }
+          .meta { font-size: 12px; color: #888; text-align: right; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+          th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+          th { background: #1c1c1c; color: #fff; font-size: 12px; }
+          tr:nth-child(even) { background: #fbfbfb; }
+          .btn-bar { margin-bottom: 20px; display: flex; gap: 10px; }
+          .btn { background: #d0021b; color: #fff; border: none; padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+          .btn-close { background: #eee; color: #333; border: 1px solid #ccc; padding: 10px 14px; font-size: 14px; border-radius: 4px; cursor: pointer; }
+          @media print {
+            .btn-bar { display: none !important; }
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="btn-bar">
+          <button class="btn" onclick="window.print()">🖨️ Stampa / Salva in PDF</button>
+          <button class="btn-close" onclick="window.close()">✕ Chiudi</button>
+        </div>
+        <div class="header">
+          <div>
+            <h1>GymTracker — Storico Allenamenti</h1>
+            <p class="sub">Atleta: <strong>${athlete}</strong> · Filtro: <strong>${exName}</strong></p>
+          </div>
+          <div class="meta">
+            <div>Esportato: ${today}</div>
+            <div>${desc.length} serie</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th><th>Ora</th>${showEx ? '<th>Esercizio</th>' : ''}<th>Reps</th><th>Carico (kg)</th><th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="6" style="text-align:center">Nessun log trovato</td></tr>'}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    pWin.document.close();
+    pWin.focus();
+  } else {
+    // Fallback: stampa la pagina corrente
+    window.print();
+  }
 });
 
 </script>
