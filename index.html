@@ -2296,13 +2296,19 @@ function advance() {
   if (sess.cur>=steps.length) { showEnd(); return; }
   const next=steps[sess.cur];
 
+  // Se è la fine del blocco, passa direttamente al primo esercizio del nuovo blocco!
+  if (next.bi !== prev.bi) {
+    renderStep();
+    return;
+  }
+
   // per i blocchi serie non c'è riepilogo giro — si va dritti al prossimo step
   if (prev.tipoBlocco==='serie' || prev.isRecupero) {
     renderStep(); return;
   }
 
-  // circuito: riepilogo al cambio giro o blocco
-  const giroFinito=(next.giro!==prev.giro||next.bi!==prev.bi);
+  // circuito: riepilogo solo al cambio giro interno allo stesso circuito
+  const giroFinito=(next.giro!==prev.giro);
   if (giroFinito) showGiroRiepilogo(prev);
   else renderStep();
 }
@@ -2377,12 +2383,13 @@ function showEnd() {
   $('es-durata').textContent = `${elapsedMin} min`;
 
   let funFact = '';
+  const tonnesFormatted = (totalVolume / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
   if (totalVolume >= 5000) {
-    funFact = `🔥 Prestazione enorme! Hai sollevato più di ${(totalVolume/1000).toFixed(1)} tonnellate!`;
+    funFact = `🔥 Prestazione enorme! Hai spostato un carico complessivo di ${tonnesFormatted} tonnellate!`;
   } else if (totalVolume >= 2000) {
-    funFact = `💪 Grande lavoro: hai sollevato ben ${(totalVolume/1000).toFixed(1)} tonnellate!`;
+    funFact = `💪 Grande lavoro: hai sollevato ben ${tonnesFormatted} tonnellate di carico totale!`;
   } else if (totalVolume > 0) {
-    funFact = `👏 Ottimo tonnellaggio totale completato oggi!`;
+    funFact = `👏 Ottimo tonnellaggio: ${tonnesFormatted} tonnellate sollevate oggi!`;
   }
   $('es-fun-fact').textContent = funFact;
 
