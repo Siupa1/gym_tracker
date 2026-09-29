@@ -15,6 +15,8 @@
   <meta name="description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
   <meta property="og:title" content="GymTracker" />
   <meta property="og:description" content="Tieni traccia delle tue schede e dei tuoi allenamenti in palestra" />
+  <script src="/vendor/jspdf.umd.min.js"></script>
+  <script src="/vendor/jspdf.plugin.autotable.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* disabilita evidenziazione tap blu iOS */
@@ -3022,43 +3024,187 @@ function renderStoriaPerSessione() {
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
 
-/* ── esporta storico in PDF (via stampa del browser) ── */
+/* ── esporta storico in vero PDF (senza window.print né ricaricamento di pagina) ── */
+async function exportHistoryPDF() {
+  const btn = $('btn-pdf-storico');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Genero PDF...';
+  }
+
+  try {
+    const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPDFClass) {
+      throw new Error('Modulo PDF in caricamento, riprova tra qualche istante.');
+    }
+
+    const exId = $('storia-sel').value || '';
+    const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
+    const filtered = exId
+      ? logs.filter(l => l.exerciseId === exId)
+      : logs.filter(l => l.reps);
+
+    if (!filtered.length) {
+      alert('Nessun dato registrato nello storico da esportare.');
+      return;
+    }
+
+    // Dal più recente al meno recente
+    const desc = [...filtered].sort((a,b) => (b.clientTs || 0) - (a.clientTs || 0));
+
+    const doc = new jsPDFClass({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const userColor = currentUser?.colore || '#d0021b';
+    const userName = currentUser?.nome || 'Utente';
+
+    // Barra superiore scura #1c1c1c
+    doc.setFillColor(28, 28, 28);
+    doc.rect(0, 0, 210, 22, 'F');
+
+    // Riga d'accento col colore del profilo
+    const hex = userColor.replace('#','');
+    const r = parseInt(hex.substring(0,2), 16) || 208;
+    const g = parseInt(hex.substring(2,4), 16) || 2;
+    const b = parseInt(hex.substring(4,6), 16) || 27;
+    doc.setFillColor(r, g, b);
+    doc.rect(0, 22, 210, 2.5, 'F');
+
+    // Logo & App Name
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text('GymTracker', 14, 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(210, 210, 210);
+    doc.text(`Storico Allenamenti · Atleta: ${userName}`, 55, 14);
+
+    // Data export
+    const nowStr = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    doc.setFontSize(8.5);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`Data: ${nowStr}`, 196, 14, { align: 'right' });
+
+    // Intestazione filtro
+    doc.setTextColor(28, 28, 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(`Report: ${exName}`, 14, 32);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(110, 110, 110);
+    doc.text(`Totale registrazioni: ${desc.length} serie eseguite`, 14, 37);
+
+    // Colonne e dati tabella
+    const showEx = !exId;
+    const headers = showEx
+      ? [['Data', 'Ora', 'Esercizio', 'Ripetizioni', 'Carico (kg)', 'Note']]
+      : [['Data', 'Ora', 'Ripetizioni', 'Carico (kg)', 'Note']];
+
+    const bodyData = desc.map(l => {
+      const ex = exercises.find(e => e.id === l.exerciseId);
+      const dStr = fmtDate(l.clientTs);
+      const tStr = fmtTime(l.clientTs);
+      const rStr = l.reps != null ? String(l.reps) : '—';
+      const wStr = l.weight != null ? `${l.weight} kg` : '—';
+      const nStr = l.nota ? String(l.nota) : '';
+
+      return showEx
+        ? [dStr, tStr, ex?.name || '—', rStr, wStr, nStr]
+        : [dStr, tStr, rStr, wStr, nStr];
+    });
+
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable({
+        startY: 42,
+        head: headers,
+        body: bodyData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [28, 28, 28],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'left'
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: [35, 35, 35]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 248, 248]
+        },
+        didDrawPage: function(data) {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(140, 140, 140);
+          doc.text('GymTracker — Schede & Allenamenti', 14, 290);
+          doc.text(`Pagina ${data.pageNumber} di ${pageCount}`, 196, 290, { align: 'right' });
+        }
+      });
+    } else {
+      // Fallback testo formattato
+      let y = 46;
+      bodyData.forEach(row => {
+        if (y > 280) { doc.addPage(); y = 20; }
+        doc.text(row.join('  |  '), 14, y);
+        y += 7;
+      });
+    }
+
+    const cleanName = (exName || 'Tutti').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
+    const fileName = `GymTracker_${cleanName}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+    const blob = doc.output('blob');
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+
+    // Se il dispositivo supporta la condivisione file nativa (iOS / Android share sheet)
+    let shared = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: fileName,
+          text: `Storico allenamento GymTracker - ${exName}`
+        });
+        shared = true;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          return; // L'utente ha chiuso il foglio di condivisione senza errori
+        }
+      }
+    }
+
+    if (!shared) {
+      // Download diretto del file
+      doc.save(fileName);
+      alert(`✓ PDF "${fileName}" scaricato con successo!`);
+    }
+  } catch (err) {
+    console.error('Errore export PDF:', err);
+    alert('Errore durante la creazione del PDF: ' + (err?.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
 $('btn-pdf-storico').addEventListener('click', (e) => {
   if (e) {
     e.preventDefault();
     e.stopPropagation();
   }
-
-  const exId = $('storia-sel').value || '';
-  const exName = exId ? (exercises.find(e => e.id === exId)?.name || '') : 'Tutti gli esercizi';
-  $('ph-title').textContent = `Storico allenamenti — ${currentUser?.nome || ''}`;
-  $('ph-sub').textContent = `${exName} · esportato il ${new Date().toLocaleDateString('it-IT')}`;
-
-  // Assicura che l'app rimanga ancorata sul tab Storico anche dopo eventuale refresh del browser
-  try {
-    localStorage.setItem('gym_active_tab', 'tab-storia');
-    history.replaceState(null, '', '#tab-storia');
-  } catch (err) {}
-
-  document.body.classList.toggle('print-grouped', !exId);
-
-  const cleanup = () => {
-    document.body.classList.remove('print-grouped');
-    switchTab('tab-storia', false);
-  };
-
-  window.addEventListener('afterprint', cleanup, { once: true });
-
-  // Timeout breve per permettere al browser di aggiornare il layout CSS di stampa prima di lanciare la finestra
-  setTimeout(() => {
-    try {
-      window.print();
-    } catch (err) {
-      console.warn('Errore window.print:', err);
-      cleanup();
-      alert('Impossibile aprire la stampa del browser da questo dispositivo. Puoi fare uno screenshot o esportare i dati da Impostazioni.');
-    }
-  }, 50);
+  exportHistoryPDF();
 });
 
 </script>

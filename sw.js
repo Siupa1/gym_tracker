@@ -1,6 +1,12 @@
 // Service worker: apre l'app anche senza rete (i dati restano nella cache Firestore)
-const CACHE = 'gymtracker-v1';
-const SHELL = ['./', './index.html', './manifest.json'];
+const CACHE = 'gymtracker-v2';
+const SHELL = [
+  './',
+  './index.html',
+  './manifest.json',
+  './vendor/jspdf.umd.min.js',
+  './vendor/jspdf.plugin.autotable.min.js'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
