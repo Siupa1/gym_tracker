@@ -518,6 +518,28 @@
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: #ccc; }
+
+    @media print {
+      body > *:not(#view-print-report) {
+        display: none !important;
+      }
+      #view-print-report {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        background: #fff !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      #view-print-report .no-print {
+        display: none !important;
+      }
+      #vpr-container {
+        border: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -881,6 +903,27 @@
     <!-- Anteprima del report -->
     <div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:bold">ANTEPRIMA DATI:</div>
     <div style="background:#f7f7f7;border:1px solid #ddd;padding:10px;font-size:11px;font-family:monospace;max-height:160px;overflow-y:auto;white-space:pre-wrap;border-radius:3px;color:#333" id="me-preview"></div>
+  </div>
+</div>
+
+<!-- ══ SCHEDA DI STAMPA & ANTEPRIMA REPORT (IN-APP) ══ -->
+<div id="view-print-report" style="display:none;position:fixed;inset:0;background:#f8f8f8;z-index:99999;overflow-y:auto;padding:16px 12px 60px">
+  <div class="no-print" style="max-width:760px;margin:0 auto 16px;background:#fff;border:1px solid #ddd;padding:12px;border-radius:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn btn-red" id="vpr-btn-print" style="padding:10px 16px;font-size:14px;font-weight:bold">🖨️ Stampa / Salva in PDF</button>
+      <button type="button" class="btn btn-dark" id="vpr-btn-share" style="padding:10px 16px;font-size:14px">📲 Condividi Report</button>
+    </div>
+    <button type="button" class="btn btn-ghost" id="vpr-btn-close" style="padding:10px 16px;font-size:14px">✕ Torna all'App</button>
+  </div>
+  <div id="vpr-container" style="max-width:760px;margin:0 auto;background:#fff;border:1px solid #ddd;padding:24px">
+    <div style="border-bottom:3px solid #d0021b;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1 style="font-size:22px;margin:0 0 4px;color:#1c1c1c" id="vpr-title">GymTracker — Confronto Allenamenti</h1>
+        <div style="font-size:13px;color:#666" id="vpr-sub">Caricamento...</div>
+      </div>
+      <div style="font-size:12px;color:#888;text-align:right" id="vpr-meta"></div>
+    </div>
+    <div id="vpr-cards"></div>
   </div>
 </div>
 
@@ -3308,20 +3351,110 @@ $('me-btn-csv').addEventListener('click', () => {
   alert(`✓ File Excel/CSV "${fileName}" scaricato!`);
 });
 
-// 4. Stampa / PDF: apre /report.html (compatibile 100% con iOS Safari, PWA e Desktop)
-$('me-btn-print').addEventListener('click', () => {
-  try {
-    localStorage.setItem('gymtracker_export_data', JSON.stringify(currentExportData));
-  } catch(e) {}
+// 4. Stampa / PDF: apre la scheda di stampa e anteprima direttamente in-app (senza reindirizzamenti esterni)
+function openPrintReportView() {
+  closeExportModal();
+  const v = $('view-print-report');
+  if (!v) return;
 
-  // Apri /report.html in un nuovo tab/finestra (in iOS standalone apre Safari senza crashare l'app)
-  const a = document.createElement('a');
-  a.href = '/report.html';
-  a.target = '_blank';
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => a.remove(), 400);
+  $('vpr-sub').textContent = `Atleta: ${currentExportData.athlete} · Report ordinato per Esercizio`;
+  $('vpr-meta').innerHTML = `<div>Data: ${currentExportData.today}</div><div>${currentExportData.items.length} esercizi analizzati</div>`;
+
+  const cardsCont = $('vpr-cards');
+  cardsCont.innerHTML = '';
+
+  if (!currentExportData.items.length) {
+    cardsCont.innerHTML = '<p style="padding:20px;text-align:center;color:#888">Nessun dato registrato da confrontare.</p>';
+  } else {
+    currentExportData.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'ex-card';
+      card.style.cssText = 'border:1px solid #ddd;margin-bottom:18px;background:#fff;border-radius:4px;overflow:hidden;break-inside:avoid;';
+
+      let deltaHtml = '';
+      if (item.diffWeight != null) {
+        const sign = item.diffWeight > 0 ? '+' : '';
+        const bg = item.diffWeight > 0 ? '#e6f4ea' : '#f1f3f4';
+        const color = item.diffWeight > 0 ? '#137333' : '#5f6368';
+        deltaHtml = `<div style="padding:8px 12px;background:${bg};color:${color};font-weight:bold;font-size:12px;border-top:1px solid #e0e0e0">
+          🚀 Progresso dall'inizio: ${sign}${item.diffWeight} kg (${sign}${item.diffPercent}%)
+        </div>`;
+      }
+
+      const todayBox = item.latestStats ? `
+        <div style="background:#fff;border:1px solid #ddd;border-left:4px solid #d0021b;padding:10px 12px;border-radius:4px;flex:1;min-width:240px">
+          <div style="font-size:11px;font-weight:bold;color:#777;text-transform:uppercase;margin-bottom:4px">🔴 Oggi / Più recente (${item.latestStats.dateStr})</div>
+          <div style="font-size:17px;font-weight:bold;color:#1c1c1c">${item.latestStats.maxWeight ? item.latestStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
+          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.latestStats.max1RM || '—'} kg</strong> · ${item.latestStats.count} serie</div>
+          <div style="font-size:11px;color:#777;margin-top:6px;font-family:monospace">${item.latestStats.setsStr}</div>
+          ${item.latestStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.latestStats.notes}</div>` : ''}
+        </div>
+      ` : '';
+
+      const startBox = item.firstStats ? `
+        <div style="background:#fff;border:1px solid #ddd;border-left:4px solid #888;padding:10px 12px;border-radius:4px;flex:1;min-width:240px">
+          <div style="font-size:11px;font-weight:bold;color:#777;text-transform:uppercase;margin-bottom:4px">⚪ Data di inizio (${item.firstStats.dateStr})</div>
+          <div style="font-size:17px;font-weight:bold;color:#1c1c1c">${item.firstStats.maxWeight ? item.firstStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
+          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.firstStats.max1RM || '—'} kg</strong> · ${item.firstStats.count} serie</div>
+          <div style="font-size:11px;color:#777;margin-top:6px;font-family:monospace">${item.firstStats.setsStr}</div>
+          ${item.firstStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.firstStats.notes}</div>` : ''}
+        </div>
+      ` : '';
+
+      card.innerHTML = `
+        <div style="background:#1c1c1c;color:#fff;padding:10px 14px;font-size:15px;font-weight:bold;display:flex;justify-content:space-between;align-items:center">
+          <span>🏋️ ${item.exercise.name}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;font-weight:normal">${item.totalSessions} sessioni</span>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px;background:#fafafa;flex-wrap:wrap">
+          ${todayBox}
+          ${startBox}
+        </div>
+        ${deltaHtml}
+      `;
+      cardsCont.appendChild(card);
+    });
+  }
+
+  v.style.display = 'block';
+}
+
+function closePrintReportView() {
+  const v = $('view-print-report');
+  if (v) v.style.display = 'none';
+}
+
+$('me-btn-print').addEventListener('click', openPrintReportView);
+$('vpr-btn-close').addEventListener('click', closePrintReportView);
+
+$('vpr-btn-print').addEventListener('click', () => {
+  const isIOSStandalone = window.navigator.standalone === true;
+  if (isIOSStandalone) {
+    alert("Su iPhone aggiunto alla Home, tocca '📲 Condividi' per salvare direttamente il PDF nelle Note o inviarlo su WhatsApp senza chiudere l'app!");
+  } else {
+    window.print();
+  }
+});
+
+$('vpr-btn-share').addEventListener('click', async () => {
+  const { summaryText, exName } = currentExportData;
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `GymTracker Confronto - ${exName}`,
+        text: summaryText
+      });
+      return;
+    } catch(err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(summaryText);
+    }
+    alert('✓ Report copiato negli appunti!');
+  } catch(e) {}
 });
 
 </script>
