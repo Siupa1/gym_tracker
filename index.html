@@ -879,24 +879,29 @@
     <p id="me-sub" style="font-size:12px;color:#777;margin-bottom:14px"></p>
 
     <div class="vgap" style="gap:10px;margin-bottom:14px">
-      <!-- 1. Condividi / Invia (WhatsApp, Note, ecc.) -->
-      <button type="button" class="btn btn-red btn-full" id="me-btn-share" style="min-height:48px;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px">
-        📲 Invia / Condividi (WhatsApp / Note)
-      </button>
-      
-      <!-- 2. Copia Testo -->
-      <button type="button" class="btn btn-dark btn-full" id="me-btn-copy" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
-        📋 Copia per Messaggi o Appunti
+      <!-- 1. Invia su WhatsApp diretto -->
+      <button type="button" class="btn btn-full" id="me-btn-wa" style="background:#25D366;color:#fff;min-height:48px;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px">
+        💬 Invia su WhatsApp (testo e dati)
       </button>
 
-      <!-- 3. Scarica File Excel / CSV -->
-      <button type="button" class="btn btn-ghost btn-full" id="me-btn-csv" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
-        📊 Scarica File Excel / CSV
+      <!-- 2. Condividi Link con Report (Tutti i canali) -->
+      <button type="button" class="btn btn-red btn-full" id="me-btn-share" style="min-height:46px;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px">
+        📲 Condividi Link con Report
+      </button>
+      
+      <!-- 3. Copia Testo -->
+      <button type="button" class="btn btn-dark btn-full" id="me-btn-copy" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        📋 Copia per Messaggi o Appunti
       </button>
 
       <!-- 4. Apri Foglio Stampabile / PDF -->
       <button type="button" class="btn btn-ghost btn-full" id="me-btn-print" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
         🖨️ Apri Scheda Stampabile / PDF
+      </button>
+
+      <!-- 5. Scarica File Excel / CSV -->
+      <button type="button" class="btn btn-ghost btn-full" id="me-btn-csv" style="min-height:44px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        📊 Scarica File Excel / CSV
       </button>
     </div>
 
@@ -911,7 +916,8 @@
   <div class="no-print" style="max-width:760px;margin:0 auto 16px;background:#fff;border:1px solid #ddd;padding:12px;border-radius:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button type="button" class="btn btn-red" id="vpr-btn-print" style="padding:10px 16px;font-size:14px;font-weight:bold">🖨️ Stampa / Salva in PDF</button>
-      <button type="button" class="btn btn-dark" id="vpr-btn-share" style="padding:10px 16px;font-size:14px">📲 Condividi Report</button>
+      <button type="button" class="btn" id="vpr-btn-wa" style="background:#25D366;color:#fff;padding:10px 16px;font-size:14px;font-weight:bold">💬 WhatsApp</button>
+      <button type="button" class="btn btn-dark" id="vpr-btn-share" style="padding:10px 16px;font-size:14px">📲 Condividi Link</button>
     </div>
     <button type="button" class="btn btn-ghost" id="vpr-btn-close" style="padding:10px 16px;font-size:14px">✕ Torna all'App</button>
   </div>
@@ -3283,14 +3289,89 @@ $('modal-export').addEventListener('click', (e) => {
   if (e.target === $('modal-export')) closeExportModal();
 });
 
-// 1. Condividi / Invia (WhatsApp / Note / Mail)
-$('me-btn-share').addEventListener('click', async () => {
+/* ─── Funzioni di codifica e decodifica report per link condivisibile ─── */
+function b64urlEncode(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p) {
+    return String.fromCharCode(parseInt(p, 16));
+  })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlDecode(str) {
+  let s = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  return decodeURIComponent(Array.prototype.map.call(bin, function(c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+}
+
+function encodeReport(data) {
+  const compact = {
+    a: data.athlete || 'Atleta',
+    d: data.today || '',
+    items: (data.items || []).map(it => ({
+      n: it.exercise?.name || 'Esercizio',
+      sD: it.firstStats?.dateStr || '',
+      sM: it.firstStats?.maxWeight || 0,
+      sS: it.firstStats?.setsStr || '',
+      s1: it.firstStats?.max1RM || 0,
+      lD: it.latestStats?.dateStr || '',
+      lM: it.latestStats?.maxWeight || 0,
+      lS: it.latestStats?.setsStr || '',
+      l1: it.latestStats?.max1RM || 0,
+      dW: it.diffWeight,
+      dP: it.diffPercent,
+      cnt: it.totalSessions || 1
+    }))
+  };
+  return b64urlEncode(JSON.stringify(compact));
+}
+
+function decodeReport(encoded) {
+  try {
+    const jsonStr = b64urlDecode(encoded);
+    const parsed = JSON.parse(jsonStr);
+    return {
+      athlete: parsed.a,
+      today: parsed.d,
+      items: (parsed.items || []).map(p => ({
+        exercise: { name: p.n },
+        totalSessions: p.cnt || 1,
+        firstStats: p.sD ? { dateStr: p.sD, maxWeight: p.sM, setsStr: p.sS, max1RM: p.s1, count: 1 } : null,
+        latestStats: p.lD ? { dateStr: p.lD, maxWeight: p.lM, setsStr: p.lS, max1RM: p.l1, count: 1 } : null,
+        diffWeight: p.dW,
+        diffPercent: p.dP
+      }))
+    };
+  } catch(e) {
+    console.warn('Errore decodifica report:', e);
+    return null;
+  }
+}
+
+function getReportShareUrl() {
+  const enc = encodeReport(currentExportData);
+  const base = window.location.origin + window.location.pathname;
+  return `${base}#report=${enc}`;
+}
+
+function sendReportWhatsApp() {
+  const { summaryText } = currentExportData;
+  const shareUrl = getReportShareUrl();
+  const fullMsg = summaryText + '\n🔗 Visualizza la scheda completa online:\n' + shareUrl;
+  const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(fullMsg);
+  window.open(waUrl, '_blank');
+}
+
+async function shareReportNative() {
   const { summaryText, exName } = currentExportData;
+  const shareUrl = getReportShareUrl();
   if (navigator.share) {
     try {
       await navigator.share({
-        title: `GymTracker Confronto - ${exName}`,
-        text: summaryText
+        title: `GymTracker Confronto - ${exName || 'Allenamenti'}`,
+        text: summaryText,
+        url: shareUrl
       });
       return;
     } catch(err) {
@@ -3300,30 +3381,33 @@ $('me-btn-share').addEventListener('click', async () => {
   // Fallback: copia negli appunti
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(summaryText);
-    } else {
-      const ta = document.createElement('textarea');
-      ta.value = summaryText;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      ta.remove();
+      await navigator.clipboard.writeText(summaryText + '\n\n🔗 Scheda online:\n' + shareUrl);
     }
-    alert('✓ Report copiato negli appunti! Incollalo su WhatsApp o nelle Note.');
+    alert('✓ Report e link copiati negli appunti! Puoi incollarli dove vuoi.');
   } catch(e) {
-    prompt('Copia il testo del report:', summaryText);
+    prompt('Copia il link del report:', shareUrl);
   }
-});
+}
 
-// 2. Copia Testo
+// 1. Invia su WhatsApp
+$('me-btn-wa')?.addEventListener('click', sendReportWhatsApp);
+$('vpr-btn-wa')?.addEventListener('click', sendReportWhatsApp);
+
+// 2. Condividi Link
+$('me-btn-share')?.addEventListener('click', shareReportNative);
+$('vpr-btn-share')?.addEventListener('click', shareReportNative);
+
+// 3. Copia Testo
 $('me-btn-copy').addEventListener('click', async () => {
   const { summaryText } = currentExportData;
+  const shareUrl = getReportShareUrl();
+  const full = summaryText + '\n🔗 Scheda online:\n' + shareUrl;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(summaryText);
+      await navigator.clipboard.writeText(full);
     } else {
       const ta = document.createElement('textarea');
-      ta.value = summaryText;
+      ta.value = full;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
@@ -3331,11 +3415,11 @@ $('me-btn-copy').addEventListener('click', async () => {
     }
     alert('✓ Copiato negli appunti! Puoi incollarlo su WhatsApp, Messaggi o Note.');
   } catch(e) {
-    prompt('Copia il testo:', summaryText);
+    prompt('Copia il testo:', full);
   }
 });
 
-// 3. Scarica CSV (Excel)
+// 4. Scarica CSV (Excel)
 $('me-btn-csv').addEventListener('click', () => {
   const { csvContent, exName } = currentExportData;
   const safeName = (exName || 'Confronto').replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, '_').slice(0, 20);
@@ -3351,19 +3435,19 @@ $('me-btn-csv').addEventListener('click', () => {
   alert(`✓ File Excel/CSV "${fileName}" scaricato!`);
 });
 
-// 4. Stampa / PDF: apre la scheda di stampa e anteprima direttamente in-app (senza reindirizzamenti esterni)
+// 5. Scheda di Stampa & Anteprima
 function openPrintReportView() {
   closeExportModal();
   const v = $('view-print-report');
   if (!v) return;
 
-  $('vpr-sub').textContent = `Atleta: ${currentExportData.athlete} · Report ordinato per Esercizio`;
-  $('vpr-meta').innerHTML = `<div>Data: ${currentExportData.today}</div><div>${currentExportData.items.length} esercizi analizzati</div>`;
+  $('vpr-sub').textContent = `Atleta: ${currentExportData.athlete || 'Atleta'} · Report ordinato per Esercizio`;
+  $('vpr-meta').innerHTML = `<div>Data: ${currentExportData.today || new Date().toLocaleDateString('it-IT')}</div><div>${(currentExportData.items || []).length} esercizi analizzati</div>`;
 
   const cardsCont = $('vpr-cards');
   cardsCont.innerHTML = '';
 
-  if (!currentExportData.items.length) {
+  if (!currentExportData.items || !currentExportData.items.length) {
     cardsCont.innerHTML = '<p style="padding:20px;text-align:center;color:#888">Nessun dato registrato da confrontare.</p>';
   } else {
     currentExportData.items.forEach(item => {
@@ -3385,7 +3469,7 @@ function openPrintReportView() {
         <div style="background:#fff;border:1px solid #ddd;border-left:4px solid #d0021b;padding:10px 12px;border-radius:4px;flex:1;min-width:240px">
           <div style="font-size:11px;font-weight:bold;color:#777;text-transform:uppercase;margin-bottom:4px">🔴 Oggi / Più recente (${item.latestStats.dateStr})</div>
           <div style="font-size:17px;font-weight:bold;color:#1c1c1c">${item.latestStats.maxWeight ? item.latestStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
-          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.latestStats.max1RM || '—'} kg</strong> · ${item.latestStats.count} serie</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.latestStats.max1RM || '—'} kg</strong> · ${item.latestStats.count || 1} serie</div>
           <div style="font-size:11px;color:#777;margin-top:6px;font-family:monospace">${item.latestStats.setsStr}</div>
           ${item.latestStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.latestStats.notes}</div>` : ''}
         </div>
@@ -3395,7 +3479,7 @@ function openPrintReportView() {
         <div style="background:#fff;border:1px solid #ddd;border-left:4px solid #888;padding:10px 12px;border-radius:4px;flex:1;min-width:240px">
           <div style="font-size:11px;font-weight:bold;color:#777;text-transform:uppercase;margin-bottom:4px">⚪ Data di inizio (${item.firstStats.dateStr})</div>
           <div style="font-size:17px;font-weight:bold;color:#1c1c1c">${item.firstStats.maxWeight ? item.firstStats.maxWeight + ' kg' : '—'} <span style="font-size:12px;font-weight:normal;color:#666">max</span></div>
-          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.firstStats.max1RM || '—'} kg</strong> · ${item.firstStats.count} serie</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">1RM stimato: <strong>${item.firstStats.max1RM || '—'} kg</strong> · ${item.firstStats.count || 1} serie</div>
           <div style="font-size:11px;color:#777;margin-top:6px;font-family:monospace">${item.firstStats.setsStr}</div>
           ${item.firstStats.notes ? `<div style="font-size:11px;color:#888;margin-top:4px">Note: ${item.firstStats.notes}</div>` : ''}
         </div>
@@ -3404,7 +3488,7 @@ function openPrintReportView() {
       card.innerHTML = `
         <div style="background:#1c1c1c;color:#fff;padding:10px 14px;font-size:15px;font-weight:bold;display:flex;justify-content:space-between;align-items:center">
           <span>🏋️ ${item.exercise.name}</span>
-          <span style="font-size:11px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;font-weight:normal">${item.totalSessions} sessioni</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;font-weight:normal">${item.totalSessions || 1} sessioni</span>
         </div>
         <div style="display:flex;gap:10px;padding:12px;background:#fafafa;flex-wrap:wrap">
           ${todayBox}
@@ -3422,6 +3506,9 @@ function openPrintReportView() {
 function closePrintReportView() {
   const v = $('view-print-report');
   if (v) v.style.display = 'none';
+  if (window.location.hash.includes('report=')) {
+    history.replaceState(null, '', window.location.pathname);
+  }
 }
 
 $('me-btn-print').addEventListener('click', openPrintReportView);
@@ -3430,32 +3517,33 @@ $('vpr-btn-close').addEventListener('click', closePrintReportView);
 $('vpr-btn-print').addEventListener('click', () => {
   const isIOSStandalone = window.navigator.standalone === true;
   if (isIOSStandalone) {
-    alert("Su iPhone aggiunto alla Home, tocca '📲 Condividi' per salvare direttamente il PDF nelle Note o inviarlo su WhatsApp senza chiudere l'app!");
+    alert("Su iPhone aggiunto alla Home, tocca '💬 WhatsApp' o '📲 Condividi Link' per salvare o inviare il report!");
   } else {
     window.print();
   }
 });
 
-$('vpr-btn-share').addEventListener('click', async () => {
-  const { summaryText, exName } = currentExportData;
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: `GymTracker Confronto - ${exName}`,
-        text: summaryText
-      });
-      return;
-    } catch(err) {
-      if (err.name === 'AbortError') return;
+// Controllo se l'app è stata aperta da un link condiviso (#report=...)
+function checkSharedReportHash() {
+  const hash = window.location.hash || '';
+  if (hash.includes('report=')) {
+    const raw = hash.split('report=')[1].split('&')[0];
+    const decoded = decodeReport(raw);
+    if (decoded && decoded.items && decoded.items.length) {
+      currentExportData = decoded;
+      const loading = $('loading');
+      if (loading) loading.style.display = 'none';
+      const prof = $('profili-screen');
+      if (prof) prof.style.display = 'none';
+      openPrintReportView();
+      return true;
     }
   }
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(summaryText);
-    }
-    alert('✓ Report copiato negli appunti!');
-  } catch(e) {}
-});
+  return false;
+}
+
+window.addEventListener('hashchange', checkSharedReportHash);
+setTimeout(checkSharedReportHash, 100);
 
 </script>
 </body>
