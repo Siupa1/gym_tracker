@@ -770,28 +770,34 @@
     </div>
 
     <div id="end-wrap" style="display:none;margin-top:14px">
-      <div class="card sess-end">
-        <div class="end-ico">🏆</div>
-        <h3>Allenamento completato!</h3>
+      <div class="card sess-end" style="padding:24px 16px">
+        <div class="end-ico" style="font-size:52px;margin-bottom:10px">🏆</div>
+        <h3 style="font-size:22px;margin-bottom:6px">Allenamento completato!</h3>
         <p id="end-msg" style="color:#555;margin-bottom:12px"></p>
         <div id="end-stats-box" style="margin:16px 0;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:8px;padding:14px">
           <div style="display:flex;justify-content:space-around;text-align:center;gap:8px">
             <div>
-              <div id="es-volume" style="font-size:18px;font-weight:bold;color:#d0021b">0 kg</div>
+              <div id="es-volume" style="font-size:20px;font-weight:bold;color:#d0021b">0 kg</div>
               <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Volume Totale</div>
             </div>
             <div>
-              <div id="es-sets" style="font-size:18px;font-weight:bold;color:#1c1c1c">0</div>
+              <div id="es-sets" style="font-size:20px;font-weight:bold;color:#1c1c1c">0</div>
               <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Set Fatti</div>
             </div>
             <div>
-              <div id="es-durata" style="font-size:18px;font-weight:bold;color:#1c1c1c">0 min</div>
+              <div id="es-durata" style="font-size:20px;font-weight:bold;color:#1c1c1c">0 min</div>
               <div style="font-size:10px;color:#888;text-transform:uppercase;margin-top:2px">Durata</div>
             </div>
           </div>
           <div id="es-fun-fact" style="margin-top:10px;font-size:12px;color:#4a5568;text-align:center;font-style:italic"></div>
         </div>
-        <button class="btn btn-red btn-full" id="btn-fine">Torna alle schede</button>
+        <div class="vgap" style="gap:8px;margin-top:16px">
+          <button class="btn btn-red btn-full" id="btn-fine" style="min-height:50px;font-size:15px;font-weight:bold">✓ Chiudi Allenamento</button>
+          <button class="btn btn-ghost btn-full" id="btn-end-storia" style="min-height:44px;font-size:14px">📊 Vai allo Storico</button>
+        </div>
+        <div id="end-autoclose-wrap" style="margin-top:12px;font-size:12px;color:#888">
+          Chiusura automatica tra <strong id="end-autoclose-sec" style="color:#d0021b">6</strong>s...
+        </div>
       </div>
     </div>
   </div>
@@ -2372,23 +2378,23 @@ async function doNext() {
     const weight=wv!==''?parseFloat(wv):null;
     syncWait();
     const nota1=$('al-nota').value.trim()||null;
-    await addDoc(colLogs,{
+    addDoc(colLogs,{
       exerciseId:step.exId, reps, weight, nota:nota1,
       sessionId:`${sess.sid}_${sess.ts}`,
       clientTs:Date.now(), createdAt:serverTimestamp()
-    });
+    }).then(syncOk).catch(syncErr);
     sess.results.push({stepIdx:sess.cur,reps,weight,skipped:false});
     checkPR(step.exId, weight, reps);
   } else if (step.tipo==='tempo') {
     stopTimer();
     syncWait();
     const nota2=$('al-nota').value.trim()||null;
-    await addDoc(colLogs,{
+    addDoc(colLogs,{
       exerciseId:step.exId, reps:null, weight:null,
       durata:step.durata||null, nota:nota2,
       sessionId:`${sess.sid}_${sess.ts}`,
       clientTs:Date.now(), createdAt:serverTimestamp()
-    });
+    }).then(syncOk).catch(syncErr);
     sess.results.push({stepIdx:sess.cur,reps:null,weight:null,durata:step.durata,skipped:false});
   } else {
     sess.results.push({stepIdx:sess.cur,reps:null,weight:null,skipped:false});
@@ -2471,15 +2477,43 @@ $('btn-next-giro').addEventListener('click',()=>{
 });
 
 /* ── fine sessione ── */
+let endAutoCloseTimer = null;
+
+function chiudiSessioneFinale(targetTab = null) {
+  if (endAutoCloseTimer) {
+    clearInterval(endAutoCloseTimer);
+    endAutoCloseTimer = null;
+  }
+  releaseWakeLock();
+  stopTimer();
+  stopRecupero();
+  clearSess();
+  sess = null;
+
+  document.querySelector('.sess-header')?.style.removeProperty('display');
+  $('end-wrap').style.display = 'none';
+  $('al-session').style.display = 'none';
+  $('al-start').style.display = 'block';
+  $('prog-fill').style.width = '0';
+  renderAlStart();
+
+  if (targetTab) {
+    switchTab(targetTab);
+  }
+}
+
 function showEnd() {
   stopTimer(); stopRecupero();
   releaseWakeLock();
+  clearSess(); // Salva subito lo stato: sessione completata
   $('prog-fill').style.width='100%';
   $('ex-card').style.display='none';
   $('giro-wrap').style.display='none';
+  $('recupero-wrap').style.display='none';
   $('btn-skip').style.display='none';
   $('btn-next').style.display='none';
   $('btn-annulla-al').style.display='none';
+  document.querySelector('.sess-header')?.style.setProperty('display', 'none');
 
   const setsDone = sess.results.filter(r=>!r.skipped&&r.reps).length;
   let totalVolume = 0;
@@ -2492,7 +2526,7 @@ function showEnd() {
   const elapsedSec = Math.round((Date.now() - (sess.ts || Date.now())) / 1000);
   const elapsedMin = Math.max(1, Math.round(elapsedSec / 60));
 
-  $('end-msg').textContent = `${setsDone} serie registrate con successo. Grande sessione!`;
+  $('end-msg').textContent = `${setsDone} serie registrate con successo. Ottimo lavoro!`;
   $('es-volume').textContent = totalVolume > 0 ? `${totalVolume.toLocaleString('it-IT')} kg` : '—';
   $('es-sets').textContent = setsDone;
   $('es-durata').textContent = `${elapsedMin} min`;
@@ -2509,6 +2543,20 @@ function showEnd() {
   $('es-fun-fact').textContent = funFact;
 
   $('end-wrap').style.display='block';
+
+  // Chiusura automatica con conto alla rovescia di 6s (chiudibile subito con il pulsante)
+  let countdownSec = 6;
+  const elSec = $('end-autoclose-sec');
+  if (elSec) elSec.textContent = countdownSec;
+  if (endAutoCloseTimer) clearInterval(endAutoCloseTimer);
+  endAutoCloseTimer = setInterval(() => {
+    countdownSec--;
+    const sEl = $('end-autoclose-sec');
+    if (sEl) sEl.textContent = countdownSec;
+    if (countdownSec <= 0) {
+      chiudiSessioneFinale();
+    }
+  }, 1000);
 }
 
 $('btn-nota-toggle').addEventListener('click',()=>{
@@ -2517,13 +2565,12 @@ $('btn-nota-toggle').addEventListener('click',()=>{
   if (show) ta.focus();
 });
 
-$('btn-fine').addEventListener('click',()=>{
-  releaseWakeLock();
-  clearSess();
-  sess=null;
-  $('al-session').style.display='none';
-  $('al-start').style.display='block';
-  $('prog-fill').style.width='0';
+$('btn-fine').addEventListener('click', () => {
+  chiudiSessioneFinale();
+});
+
+$('btn-end-storia')?.addEventListener('click', () => {
+  chiudiSessioneFinale('tab-storia');
 });
 
 /* ── annulla allenamento in corso ── */
@@ -2534,6 +2581,8 @@ function cancelWorkout() {
     ? `Annullare l'allenamento? I ${tot} set già registrati resteranno salvati, ma il resto della scheda verrà interrotto.`
     : `Annullare l'allenamento in corso?`;
   if (!confirm(msg)) return;
+  if (endAutoCloseTimer) { clearInterval(endAutoCloseTimer); endAutoCloseTimer = null; }
+  document.querySelector('.sess-header')?.style.removeProperty('display');
   stopTimer(); stopRecupero();
   releaseWakeLock();
   clearSess();
