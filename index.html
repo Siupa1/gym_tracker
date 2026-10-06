@@ -303,6 +303,8 @@
     .hint-row.hint-aumenta .hr-val { color:#d0021b; }
     .hint-row.hint-ok { border-left:3px solid #1a7f37; }
     .hint-row.hint-ok .hr-val { color:#1a7f37; }
+    .hint-row.hint-altalenante { border-left:3px solid #e37400; }
+    .hint-row.hint-altalenante .hr-val { color:#d36100; }
 
     .sess-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
     .sess-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; }
@@ -2154,37 +2156,77 @@ function getLastLogs(exId) {
     .sort((a,b)=>(b.clientTs||0)-(a.clientTs||0));
 }
 
-function buildHint(exId) {
-  const ll=getLastLogs(exId);
-  // prima volta — nessun hint
-  if (!ll.length) return '';
+/* ── Recupero log contestuali (sessione attiva corrente + storico passato) ── */
+function getExerciseContextLogs(exId) {
+  let currentSessLogs = [];
+  if (sess && sess.results && sess.results.length) {
+    currentSessLogs = sess.results
+      .filter(r => !r.skipped && r.reps != null && sess.steps[r.stepIdx]?.exId === exId)
+      .map(r => ({ reps: r.reps, weight: r.weight, clientTs: r.clientTs || Date.now(), isCurrentSession: true }));
+  }
 
-  const lastSess=ll[0].sessionId;
-  const sessLogs=ll.filter(l=>l.sessionId===lastSess);
-  const repsArr=sessLogs.map(l=>l.reps).filter(Boolean);
-  const wArr=sessLogs.map(l=>l.weight).filter(v=>v!=null);
+  const ll = getLastLogs(exId);
+  const lastSessId = ll[0]?.sessionId;
+  const histLogs = lastSessId ? ll.filter(l => l.sessionId === lastSessId) : [];
+
+  if (currentSessLogs.length > 0) {
+    return {
+      activeLogs: currentSessLogs,
+      label: currentSessLogs.length === 1 ? 'Serie precedente' : 'Serie completate oggi',
+      hasHistory: true
+    };
+  }
+
+  if (histLogs.length > 0) {
+    return {
+      activeLogs: histLogs,
+      label: 'Ultima volta',
+      hasHistory: true
+    };
+  }
+
+  return {
+    activeLogs: [],
+    label: 'Ultima volta',
+    hasHistory: false
+  };
+}
+
+function buildHint(exId) {
+  const ctx = getExerciseContextLogs(exId);
+  if (!ctx.hasHistory || !ctx.activeLogs.length) return '';
+
+  const repsArr = ctx.activeLogs.map(l => l.reps).filter(Boolean);
+  const wArr = ctx.activeLogs.map(l => l.weight).filter(v => v != null);
   if (!repsArr.length) return '';
 
-  const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
-  const repsStr=minR===maxR?`${minR} reps`:`${minR}-${maxR} reps`;
-  const w=wArr.length?wArr[0]:null;
-  const wStr=w!=null?`${w} kg`:'—';
+  const minR = Math.min(...repsArr), maxR = Math.max(...repsArr);
+  const repsStr = minR === maxR ? `${minR} reps` : `${minR}-${maxR} reps`;
+  const w = wArr.length ? wArr[wArr.length - 1] : null;
+  const wStr = w != null ? `${w} kg` : '—';
+  const ultimaVal = w != null ? `${repsStr} × ${wStr}` : repsStr;
 
-  // riga "ultima volta"
-  const ultimaVal=w!=null?`${repsStr} × ${wStr}`:`${repsStr}`;
-
-  // riga "suggerimento"
-  let sugClass, sugVal;
+  let sugClass, sugLabel, sugVal;
   const inc = (w != null && w >= 50) ? 2.5 : (w != null && w >= 20 ? 2 : 1);
   const nextW = w != null ? Math.round((w + inc) * 10) / 10 : null;
 
   if (maxR >= 15) {
-    sugClass = 'hint-aumenta';
-    sugVal = nextW != null
-      ? `⬆️ Raggiunte 15 reps! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`
-      : `⬆️ Raggiunte 15 reps! Aumenta il carico/sovraccarico (torna a 8-10 reps)`;
+    if (minR >= 15) {
+      sugClass = 'hint-aumenta';
+      sugLabel = 'Progressione';
+      sugVal = nextW != null
+        ? `⬆️ Raggiunte 15 reps su tutte le serie! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`
+        : `⬆️ Raggiunte 15 reps su tutte le serie! Aumenta il carico/sovraccarico (torna a 8-10 reps)`;
+    } else {
+      sugClass = 'hint-altalenante';
+      sugLabel = 'In consolidamento';
+      sugVal = w != null
+        ? `💪 Dai che manca poco all'aumento di peso! Consolida 15 reps su tutte le serie con ${w} kg prima di salire`
+        : `💪 Dai che manca poco all'aumento di carico! Consolida 15 reps su tutte le serie prima di salire`;
+    }
   } else {
     sugClass = 'hint-ok';
+    sugLabel = 'Suggerimento';
     const targetNextReps = Math.min(15, maxR + 1);
     sugVal = `Prova ${targetNextReps} reps${w != null ? ' × ' + wStr : ''}`;
   }
@@ -2192,21 +2234,18 @@ function buildHint(exId) {
   return `
     <div class="hint-box">
       <div class="hint-row">
-        <span class="hr-label">Ultima volta</span>
+        <span class="hr-label">${ctx.label}</span>
         <span class="hr-val">${ultimaVal}</span>
       </div>
       <div class="hint-row ${sugClass}">
-        <span class="hr-label">${maxR >= 15 ? 'Progressione' : 'Suggerimento'}</span>
+        <span class="hr-label">${sugLabel}</span>
         <span class="hr-val">${sugVal}</span>
       </div>
     </div>`;
 }
 
-/* hint per blocchi Serie — nessuna progressione, solo target e ultimo usato */
+/* hint per blocchi Serie */
 function buildHintSerie(exId, repsTarget, pesoSuggerito) {
-  const ll = getLastLogs(exId);
-
-  // target reps (sempre visibile se impostato)
   const targetRow = repsTarget
     ? `<div class="hint-row">
          <span class="hr-label">Target</span>
@@ -2214,9 +2253,10 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
        </div>`
     : '';
 
-  if (!ll.length) {
-    // prima volta — mostra target + peso suggerito se disponibile
-    const pesoRow = pesoSuggerito!=null
+  const ctx = getExerciseContextLogs(exId);
+
+  if (!ctx.hasHistory || !ctx.activeLogs.length) {
+    const pesoRow = pesoSuggerito != null
       ? `<div class="hint-row hint-ok">
            <span class="hr-label">Peso suggerito</span>
            <span class="hr-val">${pesoSuggerito} kg</span>
@@ -2226,43 +2266,57 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
     return `<div class="hint-box">${targetRow}${pesoRow}</div>`;
   }
 
-  // ha storico — mostra ultima volta + obiettivo psicologico per batterti
-  const lastSess = ll[0].sessionId;
-  const sessLogs = ll.filter(l=>l.sessionId===lastSess);
-  const repsArr  = sessLogs.map(l=>l.reps).filter(Boolean);
-  const wArr     = sessLogs.map(l=>l.weight).filter(v=>v!=null);
+  const repsArr = ctx.activeLogs.map(l => l.reps).filter(Boolean);
+  const wArr = ctx.activeLogs.map(l => l.weight).filter(v => v != null);
   if (!repsArr.length) return `<div class="hint-box">${targetRow}</div>`;
 
-  const minR=Math.min(...repsArr), maxR=Math.max(...repsArr);
-  const repsStr=minR===maxR?`${minR} reps`:`${minR}-${maxR} reps`;
-  const w=wArr.length?wArr[0]:null;
-  const ultimaVal=w!=null?`${repsStr} × ${w} kg`:repsStr;
+  const minR = Math.min(...repsArr), maxR = Math.max(...repsArr);
+  const repsStr = minR === maxR ? `${minR} reps` : `${minR}-${maxR} reps`;
+  const w = wArr.length ? wArr[wArr.length - 1] : null;
+  const ultimaVal = w != null ? `${repsStr} × ${w} kg` : repsStr;
 
   let goalText = '';
   let goalClass = 'hint-ok';
+  let goalLabel = 'Obiettivo';
   const inc = (w != null && w >= 50) ? 2.5 : (w != null && w >= 20 ? 2 : 1);
   const nextW = w != null ? Math.round((w + inc) * 10) / 10 : null;
 
   if (maxR >= 15) {
-    // Raggiunto il tetto di 15 ripetizioni: vietato suggerire 16, 17 o 18 reps! Bisogna aumentare il carico.
-    goalClass = 'hint-aumenta';
-    if (nextW != null) {
-      goalText = `⬆️ Raggiunte 15 reps! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`;
+    if (minR >= 15) {
+      goalClass = 'hint-aumenta';
+      goalLabel = 'Progressione';
+      if (nextW != null) {
+        goalText = `⬆️ Raggiunte 15 reps su tutte le serie! Aumenta il peso a ${nextW} kg (torna a 8-10 reps)`;
+      } else {
+        goalText = `⬆️ Raggiunte 15 reps su tutte le serie! Aggiungi sovraccarico (torna a 8-10 reps)`;
+      }
     } else {
-      goalText = `⬆️ Raggiunte 15 reps! Aggiungi sovraccarico (torna a 8-10 reps)`;
+      goalClass = 'hint-altalenante';
+      goalLabel = 'In consolidamento';
+      goalText = w != null
+        ? `💪 Dai che manca poco all'aumento di peso! Consolida 15 reps su tutte le serie con ${w} kg prima di salire`
+        : `💪 Dai che manca poco all'aumento di carico! Consolida 15 reps su tutte le serie prima di salire`;
     }
   } else if (repsTarget && maxR >= repsTarget) {
-    // Raggiunto il target della scheda (es. 10 o 12 reps) prima di toccare 15
-    const canDoMoreReps = maxR < 14;
-    if (nextW != null) {
-      goalText = canDoMoreReps
-        ? `🔥 Target raggiunto (${maxR}/${repsTarget})! Aumenta a ${nextW} kg o fai ${maxR + 1} reps (max 15)`
-        : `🔥 Target raggiunto! Aumenta a ${nextW} kg o tocca quota 15 reps`;
+    if (minR >= repsTarget) {
+      goalClass = 'hint-ok';
+      goalLabel = 'Target raggiunto';
+      const canDoMoreReps = maxR < 14;
+      if (nextW != null) {
+        goalText = canDoMoreReps
+          ? `🔥 Target raggiunto (${maxR}/${repsTarget})! Aumenta a ${nextW} kg o fai ${maxR + 1} reps (max 15)`
+          : `🔥 Target raggiunto! Aumenta a ${nextW} kg o tocca quota 15 reps`;
+      } else {
+        goalText = `🔥 Target raggiunto (${maxR}/${repsTarget})! Prova ${Math.min(15, maxR + 1)} reps o aumenta carico`;
+      }
     } else {
-      goalText = `🔥 Target raggiunto (${maxR}/${repsTarget})! Prova ${Math.min(15, maxR + 1)} reps o aumenta carico`;
+      goalClass = 'hint-altalenante';
+      goalLabel = 'In consolidamento';
+      goalText = `💪 Dai che manca poco! Consolida ${repsTarget} reps su tutte le serie${w != null ? ' con ' + w + ' kg' : ''} prima di salire`;
     }
   } else {
-    // Sotto le 15 reps e sotto il target: progredisci di 1 ripetizione (mai oltre 15)
+    goalClass = 'hint-ok';
+    goalLabel = 'Obiettivo';
     const targetNextReps = Math.min(15, maxR + 1);
     if (w != null) {
       goalText = `🔥 Batti l'ultima volta: punta a ${targetNextReps} reps con ${w} kg!`;
@@ -2274,11 +2328,11 @@ function buildHintSerie(exId, repsTarget, pesoSuggerito) {
   return `<div class="hint-box">
     ${targetRow}
     <div class="hint-row">
-      <span class="hr-label">Ultima volta</span>
+      <span class="hr-label">${ctx.label}</span>
       <span class="hr-val">${ultimaVal}</span>
     </div>
     <div class="hint-row ${goalClass}">
-      <span class="hr-label">${maxR >= 15 ? 'Progressione' : 'Obiettivo'}</span>
+      <span class="hr-label">${goalLabel}</span>
       <span class="hr-val">${goalText}</span>
     </div>
   </div>`;
@@ -2352,8 +2406,11 @@ function renderStep() {
 
   if (step.tipo==='peso') {
     $('al-reps').value='';
-    const last=getLastLogs(step.exId)[0];
-    $('al-kg').value=last?.weight!=null?last.weight:'';
+    const curSets = sess?.results?.filter(r => !r.skipped && r.weight != null && sess.steps[r.stepIdx]?.exId === step.exId);
+    const curWeight = curSets && curSets.length ? curSets[curSets.length - 1].weight : null;
+    const last = getLastLogs(step.exId)[0];
+    const weightPrefill = curWeight != null ? curWeight : (last?.weight != null ? last.weight : '');
+    $('al-kg').value = weightPrefill;
   }
   if (step.tipo==='tempo') initTimer(step.durata||60);
   $('al-nota').value=''; $('al-nota').style.display='none';
