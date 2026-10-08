@@ -306,6 +306,54 @@
     .hint-row.hint-altalenante { border-left:3px solid #e37400; }
     .hint-row.hint-altalenante .hr-val { color:#d36100; }
 
+    /* badges peso & comparazioni divertenti nello storico */
+    .sess-volume-box {
+      background: #f8f9fa;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 9px 12px;
+      margin: 8px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sess-vol-val {
+      font-size: 16px;
+      font-weight: bold;
+      color: #d0021b;
+    }
+    .sess-vol-lbl {
+      font-size: 10px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+    }
+    .sess-fun-badge {
+      font-size: 12px;
+      color: #2d3748;
+      background: #fff;
+      padding: 5px 12px;
+      border-radius: 16px;
+      border: 1px solid #e0e0e0;
+      font-style: italic;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .storia-grand-card {
+      margin-top: 16px;
+      background: #1c1c1c;
+      color: #fff;
+      border-radius: 8px;
+      padding: 18px;
+      border-top: 4px solid var(--uc);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
     .sess-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
     .sess-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; }
     .sess-inputs input {
@@ -827,6 +875,7 @@
     <div id="storia-cont"><p class="empty-msg">Nessun log ancora.</p></div>
     <div id="print-groups"></div>
   </div>
+  <div id="storia-total-box"></div>
 </div>
 
 <!-- ══ MODAL ICONA ══ -->
@@ -2799,6 +2848,109 @@ $('btn-t-start').addEventListener('click',()=>{ tInterval?pauseTimer():startTime
 $('btn-t-reset').addEventListener('click',()=>initTimer(tTotal));
 
 /* ════════════════════ STORICO ════════════════════ */
+const FUN_COMPARISONS = [
+  { max: 500, items: [
+    { name: 'cassette d\'acqua minerale', singular: 'cassetta d\'acqua (6 bottiglie)', weight: 9, emoji: '💧' },
+    { name: 'scooter Vespa', singular: 'scooter Vespa', weight: 100, emoji: '🛵' },
+    { name: 'cani San Bernardo giganti', singular: 'cane San Bernardo gigante', weight: 80, emoji: '🐕' }
+  ]},
+  { max: 1500, items: [
+    { name: 'moto da cross', singular: 'moto da cross', weight: 110, emoji: '🏍️' },
+    { name: 'orsi grizzly', singular: 'orso grizzly', weight: 400, emoji: '🐻' },
+    { name: 'pianoforti verticali', singular: 'pianoforte verticale', weight: 220, emoji: '🎹' }
+  ]},
+  { max: 3000, items: [
+    { name: 'utilitarie Fiat Panda', singular: 'utilitaria Fiat Panda', weight: 950, emoji: '🚗' },
+    { name: 'cavalli da corsa', singular: 'cavallo da corsa', weight: 480, emoji: '🐎' },
+    { name: 'furgoni da lavoro', singular: 'furgone da lavoro', weight: 2200, emoji: '🚐' }
+  ]},
+  { max: 6000, items: [
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'T-Rex adulti', singular: 'T-Rex adulto', weight: 5000, emoji: '🦖' },
+    { name: 'cavalli da tiro belgi', singular: 'cavallo da tiro belga', weight: 850, emoji: '🐴' },
+    { name: 'pianoforti a coda da concerto', singular: 'pianoforte a coda da concerto', weight: 420, emoji: '🎹' }
+  ]},
+  { max: 12000, items: [
+    { name: 'rinoceronti bianchi', singular: 'rinoceronte bianco', weight: 2300, emoji: '🦏' },
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'elicotteri d\'assalto', singular: 'elicottero d\'assalto', weight: 5500, emoji: '🚁' }
+  ]},
+  { max: 25000, items: [
+    { name: 'ippopotami adulti', singular: 'ippopotamo adulto', weight: 1800, emoji: '🦛' },
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'scuolabus', singular: 'scuolabus', weight: 10000, emoji: '🚌' }
+  ]},
+  { max: 60000, items: [
+    { name: 'tir stradali a pieno carico', singular: 'tir stradale a pieno carico', weight: 24000, emoji: '🚛' },
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'vagoni della metropolitana', singular: 'vagone della metropolitana', weight: 28000, emoji: '🚇' }
+  ]},
+  { max: 150000, items: [
+    { name: 'balenottere azzurre', singular: 'balenottera azzurra', weight: 120000, emoji: '🐋' },
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'aerei Boeing 737', singular: 'aereo Boeing 737', weight: 45000, emoji: '✈️' }
+  ]},
+  { max: Infinity, items: [
+    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
+    { name: 'Statue della Libertà', singular: 'Statua della Libertà', weight: 225000, emoji: '🗽' },
+    { name: 'aerei Boeing 747 Jumbo Jet', singular: 'Boeing 747 Jumbo Jet', weight: 350000, emoji: '✈️' }
+  ]}
+];
+
+function getFunWeightEquivalence(kg, seed = 0) {
+  if (!kg || kg <= 0) return { emoji: '🏋️', phrase: 'Nessun carico spostato', shortText: 'Nessun carico' };
+  const tier = FUN_COMPARISONS.find(c => kg <= c.max) || FUN_COMPARISONS[FUN_COMPARISONS.length - 1];
+  const item = tier.items[Math.abs(seed) % tier.items.length];
+  const count = Math.max(1, Math.round(kg / item.weight));
+  const desc = count === 1 ? ('1 ' + item.singular) : (`${count} ${item.name}`);
+  return {
+    emoji: item.emoji,
+    count: count,
+    desc: desc,
+    phrase: `Hai sollevato l'equivalente di ${desc}! ${item.emoji}`,
+    shortText: `${item.emoji} L'equivalente di ${desc}`
+  };
+}
+
+function renderStoriaGrandTotal(totalWeightKg, sessCount, setsCount, exId = null) {
+  let box = $('storia-total-box');
+  if (!box) return;
+  if (!totalWeightKg || totalWeightKg <= 0) {
+    box.innerHTML = '';
+    return;
+  }
+  const tonnes = (totalWeightKg / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  const grandEquiv = getFunWeightEquivalence(totalWeightKg, 999);
+  const ex = exId ? exercises.find(e => e.id === exId) : null;
+  const title = ex ? `Somma Totale Spostata per "${ex.name}"` : 'Somma di Tutto il Peso Spostato';
+  const subText = sessCount != null
+    ? `${sessCount} sessioni nello storico · ${setsCount} serie registrate`
+    : `${setsCount} serie registrate in totale`;
+
+  box.innerHTML = `
+    <div class="card storia-grand-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px">
+            🏆 ${title}
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <span class="storia-grand-val">${totalWeightKg.toLocaleString('it-IT')} kg</span>
+            <span style="font-size:14px;color:#bbb">(${tonnes} tonnellate)</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;text-align:right">
+          ${subText}
+        </div>
+      </div>
+      <div class="storia-grand-fun">
+        <span style="font-size:22px;margin-right:8px;vertical-align:middle">${grandEquiv.emoji}</span>
+        <strong>${grandEquiv.phrase}</strong> Sei una vera forza della natura! 💪
+      </div>
+    </div>
+  `;
+}
+
 function renderStoriaSelect() {
   const sel=$('storia-sel');
   const prev=sel.value;
@@ -2818,9 +2970,19 @@ function renderStoria(exId) {
   const sorted=[...filtered].sort((a,b)=>(a.clientTs||0)-(b.clientTs||0)); // crescente per grafico
   const cont=$('storia-cont');
   const pg=$('print-groups'); pg.innerHTML='';
-  if (!sorted.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
+  if (!sorted.length) {
+    cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>';
+    renderStoriaGrandTotal(0, 0, 0);
+    return;
+  }
 
   cont.innerHTML='';
+
+  // calcola volume totale spostato nei log filtrati
+  let totalExWeight = 0;
+  sorted.forEach(l => {
+    if (l.reps && l.weight) totalExWeight += (l.reps * l.weight);
+  });
 
   // grafico solo per singolo esercizio con almeno 2 punti e almeno un valore numerico
   const hasPeso=sorted.some(l=>l.weight!=null);
@@ -2841,6 +3003,8 @@ function renderStoria(exId) {
         return cur1RM > best.val ? { log: l, val: cur1RM } : best;
       },null);
 
+      const exEquiv = getFunWeightEquivalence(totalExWeight, (exId.charCodeAt(0) || 7));
+
       const prBox=el('div'); prBox.className='card'; prBox.style.margin='0 0 14px';
       prBox.style.borderLeft='4px solid var(--uc)';
       prBox.innerHTML=`
@@ -2856,6 +3020,16 @@ function renderStoria(exId) {
             <div style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(prWeight.clientTs)}</div>
           </div>
         </div>
+        ${totalExWeight > 0 ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px">🏋️ Volume Totale Esercizio</div>
+            <div style="font-size:17px;font-weight:bold;color:#d0021b">${totalExWeight.toLocaleString('it-IT')} kg</div>
+          </div>
+          <div class="sess-fun-badge" title="${exEquiv.phrase}">
+            ${exEquiv.phrase}
+          </div>
+        </div>` : ''}
       `;
       cont.appendChild(prBox);
     }
@@ -2929,6 +3103,9 @@ function renderStoria(exId) {
       syncWait(); await deleteDoc(doc(db,`users/${currentUser.id}/logs`,btn.dataset.id));
     });
   });
+
+  // Mostra il totale in basso per la vista esercizio
+  renderStoriaGrandTotal(totalExWeight, null, sorted.length, exId);
 }
 
 /* ─── Costruisce il grafico SVG Interattivo con 1RM / Carico / Reps ─── */
@@ -3191,13 +3368,57 @@ function renderStoriaPerSessione() {
     const scheda=schedaId?schede.find(s=>s.id===schedaId):null;
     return {sid,ls,ts:ls[0]?.clientTs||0,nome:scheda?.name || (sid==='import'?'Importato':'Allenamento')};
   }).sort((a,b)=>b.ts-a.ts);
-  if (!sessions.length) { cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>'; return; }
-  sessions.forEach(sess=>{
-    const box=el('div'); box.className='card'; box.style.margin='0 0 12px'; box.style.borderLeft='4px solid var(--uc)';
+  if (!sessions.length) {
+    cont.innerHTML='<p class="empty-msg">Nessun log ancora.</p>';
+    renderStoriaGrandTotal(0, 0, 0);
+    return;
+  }
+
+  let grandTotalWeight = 0;
+  let totalSetsCount = 0;
+
+  sessions.forEach((sess, sessIdx)=>{
+    let sessWeight = 0;
+    sess.ls.forEach(l => {
+      if (l.reps && l.weight) sessWeight += (l.reps * l.weight);
+    });
+    grandTotalWeight += sessWeight;
+    totalSetsCount += sess.ls.length;
+
+    const seed = Math.floor((sess.ts || sessIdx) / 1000) + sessIdx;
+    const equiv = getFunWeightEquivalence(sessWeight, seed);
+
+    const box=el('div'); box.className='card'; box.style.margin='0 0 14px'; box.style.borderLeft='4px solid var(--uc)';
     const h=el('h3'); h.style.margin='0 0 2px'; h.textContent=sess.nome;
     const sub=el('p'); sub.style.fontSize='12px'; sub.style.color='#888'; sub.style.marginBottom='8px';
     sub.textContent=`${fmtDate(sess.ts)} · ${fmtTime(sess.ts)} · ${sess.ls.length} set`;
-    box.append(h,sub);
+
+    // Box del peso totale spostato nella sessione + frasetta divertente
+    const volBox = el('div');
+    volBox.className = 'sess-volume-box';
+    if (sessWeight > 0) {
+      volBox.innerHTML = `
+        <div>
+          <span class="sess-vol-lbl">Peso totale spostato</span>
+          <span class="sess-vol-val">${sessWeight.toLocaleString('it-IT')} kg</span>
+        </div>
+        <div class="sess-fun-badge" title="${equiv.phrase}">
+          ${equiv.phrase}
+        </div>
+      `;
+    } else {
+      volBox.innerHTML = `
+        <div>
+          <span class="sess-vol-lbl">Peso totale spostato</span>
+          <span style="font-size:14px;color:#888">Corpo libero</span>
+        </div>
+        <div class="sess-fun-badge" style="color:#777">
+          🤸 Esercizi a corpo libero / tempo
+        </div>
+      `;
+    }
+
+    box.append(h, sub, volBox);
     const byEx=new Map();
     sess.ls.forEach(l=>{
       const exName=exercises.find(e=>e.id===l.exerciseId)?.name||'—';
@@ -3213,6 +3434,9 @@ function renderStoriaPerSessione() {
     });
     cont.appendChild(box);
   });
+
+  // Mostra il totale complessivo in basso
+  renderStoriaGrandTotal(grandTotalWeight, sessions.length, totalSetsCount, null);
 }
 
 $('storia-sel').addEventListener('change',function(){ renderStoria(this.value||''); });
