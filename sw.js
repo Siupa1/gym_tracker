@@ -1,5 +1,5 @@
 // Service worker: apre l'app anche senza rete (i dati restano nella cache Firestore)
-const CACHE = 'gymtracker-v5';
+const CACHE = 'gymtracker-v6';
 const SHELL = [
   './',
   './index.html',

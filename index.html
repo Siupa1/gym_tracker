@@ -335,7 +335,7 @@
       font-size: 12px;
       color: #2d3748;
       background: #fff;
-      padding: 5px 12px;
+      padding: 6px 12px;
       border-radius: 16px;
       border: 1px solid #e0e0e0;
       font-style: italic;
@@ -343,6 +343,9 @@
       align-items: center;
       gap: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      max-width: 100%;
+      word-break: break-word;
+      line-height: 1.35;
     }
     .storia-grand-card {
       margin-top: 16px;
@@ -2639,12 +2642,9 @@ function showEnd() {
 
   let funFact = '';
   const tonnesFormatted = (totalVolume / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-  if (totalVolume >= 5000) {
-    funFact = `🔥 Prestazione enorme! Hai spostato un carico complessivo di ${tonnesFormatted} tonnellate!`;
-  } else if (totalVolume >= 2000) {
-    funFact = `💪 Grande lavoro: hai sollevato ben ${tonnesFormatted} tonnellate di carico totale!`;
-  } else if (totalVolume > 0) {
-    funFact = `👏 Ottimo tonnellaggio: ${tonnesFormatted} tonnellate sollevate oggi!`;
+  if (totalVolume > 0) {
+    const endEquiv = getFunWeightEquivalence(totalVolume, Math.floor((sess.ts || Date.now()) / 1000));
+    funFact = `${endEquiv.phrase} (${tonnesFormatted} t complessive)`;
   }
   $('es-fun-fact').textContent = funFact;
 
@@ -2849,66 +2849,238 @@ $('btn-t-reset').addEventListener('click',()=>initTimer(tTotal));
 
 /* ════════════════════ STORICO ════════════════════ */
 const FUN_COMPARISONS = [
-  { max: 500, items: [
-    { name: 'cassette d\'acqua minerale', singular: 'cassetta d\'acqua (6 bottiglie)', weight: 9, emoji: '💧' },
-    { name: 'scooter Vespa', singular: 'scooter Vespa', weight: 100, emoji: '🛵' },
-    { name: 'cani San Bernardo giganti', singular: 'cane San Bernardo gigante', weight: 80, emoji: '🐕' }
+  { max: 600, items: [
+    { name: 'cassette d\'acqua minerale (6×1,5L)', singular: 'cassetta d\'acqua minerale', weight: 9, emoji: '💧' },
+    { name: 'casse di birra Moretti da 24 bottiglie', singular: 'cassa di birra da 24 bottiglie', weight: 18, emoji: '🍺' },
+    { name: 'forme intere di Parmigiano Reggiano DOP', singular: 'forma di Parmigiano Reggiano DOP', weight: 40, emoji: '🧀' },
+    { name: 'motorini Ciao Piaggio col cestino', singular: 'motorino Ciao Piaggio col cestino', weight: 45, emoji: '🛵' },
+    { name: 'sacchi di cemento Portland da 25 kg', singular: 'sacco di cemento da 25 kg', weight: 25, emoji: '🧱' },
+    { name: 'sacchi da boxe professionali da palestra', singular: 'sacco da boxe da palestra', weight: 50, emoji: '🥊' },
+    { name: 'carrelli della spesa stracolmi', singular: 'carrello della spesa stracolmo', weight: 55, emoji: '🛒' },
+    { name: 'fusti di birra da 50 litri in acciaio', singular: 'fusto di birra da 50 litri', weight: 62, emoji: '🍻' },
+    { name: 'lavatrici in centrifuga a pieno carico', singular: 'lavatrice in centrifuga', weight: 70, emoji: '🧺' },
+    { name: 'cani San Bernardo giganti', singular: 'cane San Bernardo gigante', weight: 80, emoji: '🐕' },
+    { name: 'scooter Vespa 50 Special d\'epoca', singular: 'scooter Vespa 50 Special', weight: 85, emoji: '🛵' },
+    { name: 'panda giganti che mangiano bambù', singular: 'panda gigante', weight: 120, emoji: '🐼' },
+    { name: 'barili di petrolio greggio da 159 litri', singular: 'barile di petrolio greggio', weight: 136, emoji: '🛢️' },
+    { name: 'pneumatici giganti da trattore', singular: 'pneumatico gigante da trattore', weight: 150, emoji: '🛞' },
+    { name: 'poltrone da dentista elettriche reclinabili', singular: 'poltrona da dentista elettrica', weight: 160, emoji: '💺' },
+    { name: 'pony Shetland della fattoria', singular: 'pony Shetland', weight: 180, emoji: '🐴' },
+    { name: 'gorilla maschi di montagna', singular: 'gorilla maschio di montagna', weight: 190, emoji: '🦍' },
+    { name: 'leoni africani adulti ruggenti', singular: 'leone africano adulto', weight: 210, emoji: '🦁' },
+    { name: 'gabbie per squali in titanio', singular: 'gabbia per squali in titanio', weight: 220, emoji: '🦈' },
+    { name: 'barbecue in muratura con camino da giardino', singular: 'barbecue in muratura con camino', weight: 250, emoji: '🍖' },
+    { name: 'distributori automatici di snack e bibite', singular: 'distributore di snack e bibite', weight: 280, emoji: '🍫' },
+    { name: 'incudini storiche in acciaio massiccio', singular: 'incudine storica in acciaio', weight: 300, emoji: '🔨' }
   ]},
-  { max: 1500, items: [
-    { name: 'moto da cross', singular: 'moto da cross', weight: 110, emoji: '🏍️' },
-    { name: 'orsi grizzly', singular: 'orso grizzly', weight: 400, emoji: '🐻' },
-    { name: 'pianoforti verticali', singular: 'pianoforte verticale', weight: 220, emoji: '🎹' }
+  { max: 1800, items: [
+    { name: 'moto da cross KTM da competizione', singular: 'moto da cross da competizione', weight: 110, emoji: '🏍️' },
+    { name: 'cinghiali giganti maremmani', singular: 'cinghiale gigante maremmano', weight: 160, emoji: '🐗' },
+    { name: 'accumulatori industriali Tesla Powerwall', singular: 'accumulatore Tesla Powerwall', weight: 130, emoji: '⚡' },
+    { name: 'pianoforti verticali Yamaha da conservatorio', singular: 'pianoforte verticale Yamaha', weight: 230, emoji: '🎹' },
+    { name: 'tavoli in legno massello di quercia da 20 posti', singular: 'tavolo in legno massello di quercia', weight: 320, emoji: '🪵' },
+    { name: 'Ape Piaggio 50 cariche di legna', singular: 'Ape Piaggio 50 carica di legna', weight: 350, emoji: '🛺' },
+    { name: 'quad fuoristrada 4x4 da fango', singular: 'quad fuoristrada 4x4', weight: 360, emoji: '🏎️' },
+    { name: 'orsi grizzly maschi del Canada', singular: 'orso grizzly maschio', weight: 380, emoji: '🐻' },
+    { name: 'maxi moto Harley-Davidson da viaggio', singular: 'maxi moto Harley-Davidson', weight: 390, emoji: '🏍️' },
+    { name: 'golf car elettriche a 4 posti', singular: 'golf car elettrica', weight: 420, emoji: '🛺' },
+    { name: 'casseforti da banca blindate antiscasso', singular: 'cassaforte da banca blindata', weight: 450, emoji: '🏦' },
+    { name: 'pianoforti a mezza coda da concerto', singular: 'pianoforte a mezza coda', weight: 480, emoji: '🎹' },
+    { name: 'cavalli purosangue inglesi da corsa', singular: 'cavallo purosangue inglese', weight: 500, emoji: '🐎' },
+    { name: 'alci giganti con palchi del nord Europa', singular: 'alce gigante con palchi', weight: 520, emoji: '🫎' },
+    { name: 'tori da corrida spagnoli inferociti', singular: 'toro da corrida spagnolo', weight: 550, emoji: '🐂' },
+    { name: 'coccodrilli marini giganti australiani', singular: 'coccodrillo marino gigante', weight: 600, emoji: '🐊' },
+    { name: 'dromedari della carovana del Sahara', singular: 'dromedario della carovana', weight: 650, emoji: '🐪' },
+    { name: 'mucche frisone da latte', singular: 'mucca frisona da latte', weight: 680, emoji: '🐄' },
+    { name: 'campane in bronzo da campanile di paese', singular: 'campana in bronzo da campanile', weight: 800, emoji: '🔔' },
+    { name: 'motoscafi d\'altura da corsa', singular: 'motoscafo d\'altura da corsa', weight: 850, emoji: '🚤' },
+    { name: 'statue della Pietà scolpite in marmo di Carrara', singular: 'statua in marmo di Carrara', weight: 1200, emoji: '🏛️' },
+    { name: 'vasche idromassaggio jacuzzi a 6 posti piene d\'acqua', singular: 'vasca idromassaggio jacuzzi', weight: 1400, emoji: '🛁' }
   ]},
-  { max: 3000, items: [
-    { name: 'utilitarie Fiat Panda', singular: 'utilitaria Fiat Panda', weight: 950, emoji: '🚗' },
-    { name: 'cavalli da corsa', singular: 'cavallo da corsa', weight: 480, emoji: '🐎' },
-    { name: 'furgoni da lavoro', singular: 'furgone da lavoro', weight: 2200, emoji: '🚐' }
+  { max: 4000, items: [
+    { name: 'mitiche utilitarie Fiat Panda 4x4', singular: 'utilitaria Fiat Panda 4x4', weight: 980, emoji: '🚗' },
+    { name: 'storiche Fiat 500 d\'epoca', singular: 'Fiat 500 d\'epoca', weight: 600, emoji: '🚗' },
+    { name: 'auto Mini Cooper vintage originali', singular: 'Mini Cooper vintage', weight: 650, emoji: '🚗' },
+    { name: 'cavalli da tiro belgi da soma', singular: 'cavallo da tiro belga', weight: 950, emoji: '🐴' },
+    { name: 'forni a legna per pizza napoletana in pietra refrattaria', singular: 'forno a legna per pizza napoletana', weight: 1500, emoji: '🍕' },
+    { name: 'trattori da vigneto e frutteto compatti', singular: 'trattore da vigneto compatto', weight: 1600, emoji: '🚜' },
+    { name: 'furgoni Volkswagen Bulli T1 d\'epoca', singular: 'furgone Volkswagen Bulli T1', weight: 1300, emoji: '🚐' },
+    { name: 'statue equestri monumentali in bronzo', singular: 'statua equestre in bronzo', weight: 1800, emoji: '🏛️' },
+    { name: 'ippopotami maschi adulti africani', singular: 'ippopotamo maschio adulto', weight: 2200, emoji: '🦛' },
+    { name: 'rinoceronti bianchi della savana', singular: 'rinoceronte bianco della savana', weight: 2400, emoji: '🦏' },
+    { name: 'blocchi monolitici di granito da scultura', singular: 'blocco monolitico di granito', weight: 2500, emoji: '🪨' },
+    { name: 'suv Range Rover Defender corazzati', singular: 'suv Range Rover Defender', weight: 2700, emoji: '🚙' },
+    { name: 'carrelli elevatori muletti industriali', singular: 'carrello elevatore muletto', weight: 3000, emoji: '🚜' },
+    { name: 'tronchi monolitici di sequoia millenaria', singular: 'tronco di sequoia millenaria', weight: 3000, emoji: '🌲' },
+    { name: 'elicotteri da soccorso alpino bimotore', singular: 'elicottero da soccorso alpino', weight: 3200, emoji: '🚁' },
+    { name: 'camper mansardati da vacanza a 6 posti', singular: 'camper mansardato a 6 posti', weight: 3500, emoji: '🚐' },
+    { name: 'campane giganti da cattedrale in bronzo', singular: 'campana gigante in bronzo', weight: 3600, emoji: '🔔' },
+    { name: 'motovedette veloci della guardia costiera', singular: 'motovedetta della guardia costiera', weight: 3800, emoji: '⚓' },
+    { name: 'container navali vuoti da 20 piedi', singular: 'container navale da 20 piedi', weight: 2300, emoji: '📦' },
+    { name: 'furgoni da lavoro Iveco Daily carichi', singular: 'furgone Iveco Daily carico', weight: 2800, emoji: '🚐' },
+    { name: 'campane tibetane sacre monumentali', singular: 'campana tibetana sacra', weight: 2000, emoji: '🛕' },
+    { name: 'lingotti d\'oro puro da 12,5 kg di Fort Knox', singular: 'lingotto d\'oro da 12,5 kg', weight: 12.5, emoji: '💰' }
   ]},
-  { max: 6000, items: [
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'T-Rex adulti', singular: 'T-Rex adulto', weight: 5000, emoji: '🦖' },
-    { name: 'cavalli da tiro belgi', singular: 'cavallo da tiro belga', weight: 850, emoji: '🐴' },
-    { name: 'pianoforti a coda da concerto', singular: 'pianoforte a coda da concerto', weight: 420, emoji: '🎹' }
-  ]},
-  { max: 12000, items: [
-    { name: 'rinoceronti bianchi', singular: 'rinoceronte bianco', weight: 2300, emoji: '🦏' },
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'elicotteri d\'assalto', singular: 'elicottero d\'assalto', weight: 5500, emoji: '🚁' }
+  { max: 9000, items: [
+    { name: 'elefanti africani maschi della savana', singular: 'elefante africano maschio della savana', weight: 4500, emoji: '🐘' },
+    { name: 'tirannosauri T-Rex adulti preistorici', singular: 'T-Rex adulto preistorico', weight: 5500, emoji: '🦖' },
+    { name: 'triceratopi fossili giganti con corna', singular: 'triceratopo fossile gigante', weight: 6200, emoji: '🦕' },
+    { name: 'barche a vela da regata con bulbo in piombo', singular: 'barca a vela da regata', weight: 5200, emoji: '⛵' },
+    { name: 'elicotteri d\'assalto Apache militari', singular: 'elicottero d\'assalto Apache', weight: 5600, emoji: '🚁' },
+    { name: 'trattori John Deere giganti a 4 ruote motrici', singular: 'trattore John Deere gigante', weight: 5800, emoji: '🚜' },
+    { name: 'tronchi secolari giganti di sequoia della California', singular: 'tronco gigante di sequoia', weight: 6000, emoji: '🌲' },
+    { name: 'furgoni blindati portavalori da trasporto contanti', singular: 'furgone blindato portavalori', weight: 6500, emoji: '🚐' },
+    { name: 'motovedette d\'altura con doppi motori marini', singular: 'motovedetta d\'altura', weight: 7500, emoji: '⚓' },
+    { name: 'rulli compressori stradali pesanti per asfalto', singular: 'rullo compressore stradale', weight: 7800, emoji: '🚜' },
+    { name: 'autocarri ribaltabili da cantiere a 3 assi', singular: 'autocarro ribaltabile da cantiere', weight: 8000, emoji: '🚛' },
+    { name: 'campane giganti del Big Ben di Londra', singular: 'campana del Big Ben', weight: 8000, emoji: '🔔' },
+    { name: 'scuolabus americani gialli a 50 posti', singular: 'scuolabus americano giallo', weight: 8500, emoji: '🚌' },
+    { name: 'statue Moai dell\'isola di Pasqua', singular: 'statua Moai dell\'isola di Pasqua', weight: 8800, emoji: '🗿' },
+    { name: 'squali balena giganti degli atolli oceanici', singular: 'squalo balena gigante', weight: 9000, emoji: '🦈' },
+    { name: 'container marittimi carichi da 40 piedi', singular: 'container marittimo da 40 piedi', weight: 7000, emoji: '📦' },
+    { name: 'campane giganti della torre di San Marco a Venezia', singular: 'campana della torre di San Marco', weight: 3600, emoji: '🔔' },
+    { name: 'sculture monumentali in bronzo del David', singular: 'scultura monumentale del David', weight: 5500, emoji: '🏛️' },
+    { name: 'motoscafi offshore da 1000 cavalli da gara', singular: 'motoscafo offshore da gara', weight: 5000, emoji: '🚤' },
+    { name: 'caravan a doppio asse super accessoriati', singular: 'caravan a doppio asse', weight: 4200, emoji: '🚐' }
   ]},
   { max: 25000, items: [
-    { name: 'ippopotami adulti', singular: 'ippopotamo adulto', weight: 1800, emoji: '🦛' },
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'scuolabus', singular: 'scuolabus', weight: 10000, emoji: '🚌' }
+    { name: 'camion dei pompieri con autoscala estensibile e pompa', singular: 'camion dei pompieri con autoscala', weight: 16000, emoji: '🚒' },
+    { name: 'pale gommate Caterpillar giganti da cava', singular: 'pala gommata Caterpillar gigante', weight: 14000, emoji: '🚜' },
+    { name: 'carri armati leggeri da ricognizione cingolati', singular: 'carro armato leggero cingolato', weight: 13500, emoji: '🛡️' },
+    { name: 'aerei da caccia supersonici Eurofighter Typhoon', singular: 'aereo da caccia Eurofighter Typhoon', weight: 15500, emoji: '✈️' },
+    { name: 'pescherecci da pesca oceanica d\'altura', singular: 'peschereccio oceanico d\'altura', weight: 18000, emoji: '🚢' },
+    { name: 'tir autotreni stradali con rimorchio a pieno carico', singular: 'tir autotreno stradale a pieno carico', weight: 24000, emoji: '🚛' },
+    { name: 'autobus di linea urbani snodati da 18 metri', singular: 'autobus di linea snodato da 18 metri', weight: 19000, emoji: '🚍' },
+    { name: 'scavatrici cingolate con martellone demolitore', singular: 'scavatrice cingolata con demolitore', weight: 22000, emoji: '🚜' },
+    { name: 'sculture monolitiche dell\'Antico Egitto in basalto', singular: 'scultura monolitica egizia in basalto', weight: 15000, emoji: '🏛️' },
+    { name: 'aerei da caccia stealth F-35 Lightning II', singular: 'aereo da caccia F-35 Lightning II', weight: 13000, emoji: '✈️' },
+    { name: 'megattere oceaniche adulte dell\'Alaska', singular: 'megattera oceanica adulta', weight: 25000, emoji: '🐋' },
+    { name: 'yacht da crociera a motore da 15 metri', singular: 'yacht da crociera a motore', weight: 21000, emoji: '🛥️' },
+    { name: 'carichi completi di legname su autotreno forestale', singular: 'carico completo di legname forestale', weight: 23000, emoji: '🪵' },
+    { name: 'cabine panoramiche da funivia alpina per 100 passeggeri', singular: 'cabina da funivia per 100 persone', weight: 12000, emoji: '🚡' },
+    { name: 'gru a torre da cantiere per montaggio grattacieli', singular: 'gru a torre da cantiere', weight: 20000, emoji: '🏗️' },
+    { name: 'semirimorchi cisterna pieni di latte o carburante', singular: 'semirimorchio cisterna pieno', weight: 24000, emoji: '🚛' },
+    { name: 'obelischi monolitici in granito di Roma antica', singular: 'obelisco in granito di Roma antica', weight: 17000, emoji: '🏛️' },
+    { name: 'case mobili prefabbricate su ruote coibentate', singular: 'casa mobile prefabbricata', weight: 20000, emoji: '🏡' },
+    { name: 'vagoni cisterna ferroviari da trasporto merci', singular: 'vagone cisterna ferroviario', weight: 23000, emoji: '🚂' },
+    { name: 'battelli turistici fluviali a fondo piatto', singular: 'battello turistico fluviale', weight: 16000, emoji: '🚢' }
   ]},
-  { max: 60000, items: [
-    { name: 'tir stradali a pieno carico', singular: 'tir stradale a pieno carico', weight: 24000, emoji: '🚛' },
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'vagoni della metropolitana', singular: 'vagone della metropolitana', weight: 28000, emoji: '🚇' }
+  { max: 70000, items: [
+    { name: 'carri armati da combattimento principale Leopard 2', singular: 'carro armato da combattimento Leopard 2', weight: 55000, emoji: '🛡️' },
+    { name: 'carri armati corazzati M1 Abrams da 1500 CV', singular: 'carro armato corazzato M1 Abrams', weight: 60000, emoji: '🛡️' },
+    { name: 'aerei di linea Boeing 737 commerciali passeggeri', singular: 'aereo di linea Boeing 737', weight: 48000, emoji: '✈️' },
+    { name: 'vagoni passeggeri Frecciarossa 1000 ad alta velocità', singular: 'vagone Frecciarossa 1000 ad alta velocità', weight: 42000, emoji: '🚄' },
+    { name: 'yacht di lusso a tre ponti ormeggiati a Portofino', singular: 'yacht di lusso a tre ponti', weight: 38000, emoji: '🛥️' },
+    { name: 'scavatrici da cava a benna gigante da miniera', singular: 'scavatrice da cava a benna gigante', weight: 60000, emoji: '🚜' },
+    { name: 'tir bilici da trasporto eccezionale con pala eolica', singular: 'tir bilico da trasporto eccezionale', weight: 45000, emoji: '🚛' },
+    { name: 'balene franche australi giganti', singular: 'balena franca australe gigante', weight: 50000, emoji: '🐋' },
+    { name: 'locomotive ferroviarie elettriche da manovra pesante', singular: 'locomotiva ferroviaria elettrica', weight: 68000, emoji: '🚂' },
+    { name: 'case prefabbricate in bio-edilizia su tre piani', singular: 'casa prefabbricata in bio-edilizia', weight: 35000, emoji: '🏡' },
+    { name: 'aerei da trasporto militare tattico C-130 Hercules', singular: 'aereo da trasporto C-130 Hercules', weight: 34000, emoji: '✈️' },
+    { name: 'blocchi colossali di marmo del Pantheon di Roma', singular: 'blocco colossale di marmo del Pantheon', weight: 40000, emoji: '🏛️' },
+    { name: 'dinosauri brachiosauri giganti erbivori', singular: 'brachiosauro gigante preistorico', weight: 45000, emoji: '🦕' },
+    { name: 'sottomarini leggeri tascabili di ricerca oceanica', singular: 'sottomarino leggero tascabile', weight: 35000, emoji: '🌊' },
+    { name: 'tram storici urbani a due carrozze', singular: 'tram storico urbano a due carrozze', weight: 32000, emoji: '🚋' },
+    { name: 'carichi eccezionali di lingotti d\'argento massiccio', singular: 'carico eccezionale di lingotti d\'argento', weight: 30000, emoji: '💰' },
+    { name: 'piattaforme aeree telescopiche semoventi da 50 metri', singular: 'piattaforma aerea telescopica da 50m', weight: 28000, emoji: '🏗️' },
+    { name: 'rimorchiatori portuali a doppio motore diesel navale', singular: 'rimorchiatore portuale a doppio motore', weight: 65000, emoji: '🚢' }
   ]},
-  { max: 150000, items: [
-    { name: 'balenottere azzurre', singular: 'balenottera azzurra', weight: 120000, emoji: '🐋' },
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'aerei Boeing 737', singular: 'aereo Boeing 737', weight: 45000, emoji: '✈️' }
+  { max: 200000, items: [
+    { name: 'locomotive diesel pesanti da treno merci a lungo raggio', singular: 'locomotiva diesel da treno merci pesante', weight: 95000, emoji: '🚂' },
+    { name: 'balenottere azzurre oceaniche giganti dei mari del sud', singular: 'balenottera azzurra oceanica gigante', weight: 140000, emoji: '🐋' },
+    { name: 'sommergibili d\'esplorazione oceanica abissale', singular: 'sommergibile d\'esplorazione abissale', weight: 110000, emoji: '🌊' },
+    { name: 'turbine a vapore di grandi centrali idroelettriche', singular: 'turbina a vapore idroelettrica', weight: 120000, emoji: '⚡' },
+    { name: 'ponti levatoi stradali mobili in acciaio massiccio', singular: 'ponte levatoio in acciaio massiccio', weight: 150000, emoji: '🌉' },
+    { name: 'aerei di linea intercontinentali Airbus A350', singular: 'aereo di linea intercontinentale Airbus A350', weight: 180000, emoji: '✈️' },
+    { name: 'ancore gigantesche di portaerei nucleari', singular: 'ancora gigante di portaerei nucleare', weight: 100000, emoji: '⚓' },
+    { name: 'primi stadi del razzo Falcon 9 sulla rampa di lancio', singular: 'primo stadio del razzo Falcon 9', weight: 160000, emoji: '🚀' },
+    { name: 'ville bifamiliari in muratura complete di fondamenta', singular: 'villa in muratura con fondamenta', weight: 180000, emoji: '🏠' },
+    { name: 'navi da pesca baleniere oceaniche da ricerca', singular: 'nave da pesca oceanica da ricerca', weight: 130000, emoji: '🚢' },
+    { name: 'obelischi monumentali di piazza San Pietro a Roma', singular: 'obelisco monumentale di piazza San Pietro', weight: 190000, emoji: '🏛️' },
+    { name: 'balenottere comuni dell\'Atlantico del nord', singular: 'balenottera comune dell\'Atlantico', weight: 85000, emoji: '🐋' },
+    { name: 'convogli ferroviari completi della metropolitana', singular: 'convoglio della metropolitana a 4 carrozze', weight: 140000, emoji: '🚇' },
+    { name: 'trasformatori elettrici ad altissima tensione Terna', singular: 'trasformatore elettrico ad altissima tensione', weight: 130000, emoji: '⚡' },
+    { name: 'gru portuali a portale per scarico container marittimi', singular: 'gru portuale a portale per container', weight: 170000, emoji: '🏗️' },
+    { name: 'pontoni galleggianti da cantiere per lavori offshore', singular: 'pontone galleggiante da lavori offshore', weight: 160000, emoji: '⚓' }
   ]},
   { max: Infinity, items: [
-    { name: 'elefanti africani', singular: 'elefante africano', weight: 4500, emoji: '🐘' },
-    { name: 'Statue della Libertà', singular: 'Statua della Libertà', weight: 225000, emoji: '🗽' },
-    { name: 'aerei Boeing 747 Jumbo Jet', singular: 'Boeing 747 Jumbo Jet', weight: 350000, emoji: '✈️' }
+    { name: 'aerei Jumbo Jet Boeing 747 intercontinentali a due piani', singular: 'Boeing 747 Jumbo Jet a due piani', weight: 360000, emoji: '✈️' },
+    { name: 'Statue della Libertà di New York col basamento in granito', singular: 'Statua della Libertà di New York col basamento', weight: 225000, emoji: '🗽' },
+    { name: 'Stazioni Spaziali Internazionali (ISS) in orbita terrestre', singular: 'Stazione Spaziale Internazionale (ISS)', weight: 420000, emoji: '🛰️' },
+    { name: 'navi traghetto passeggeri e auto per la Sardegna e Corsica', singular: 'nave traghetto passeggeri e auto', weight: 600000, emoji: '🚢' },
+    { name: 'razzi lunari Saturn V della missione Apollo', singular: 'razzo lunare Saturn V della missione Apollo', weight: 550000, emoji: '🚀' },
+    { name: 'aerei colossali Antonov An-225 Mriya da trasporto record', singular: 'aereo da trasporto colossale Antonov An-225', weight: 285000, emoji: '✈️' },
+    { name: 'cupole della basilica di San Pietro a Roma in travertino', singular: 'cupola della basilica di San Pietro', weight: 800000, emoji: '🏛️' },
+    { name: 'archi di Trionfo monumentali in marmo massiccio', singular: 'arco di Trionfo monumentale in marmo', weight: 2500000, emoji: '🏛️' },
+    { name: 'piramidi maya di Chichén Itzá in pietra millenaria', singular: 'piramide maya di Chichén Itzá', weight: 5000000, emoji: '🏛️' },
+    { name: 'torri Eiffel di Parigi in ferro battuto', singular: 'torre Eiffel di Parigi', weight: 7300000, emoji: '🗼' },
+    { name: 'navi da crociera giganti da 3000 passeggeri', singular: 'nave da crociera gigante da 3000 passeggeri', weight: 20000000, emoji: '🛳️' },
+    { name: 'portaerei a propulsione atomica con ponte di volo corazzato', singular: 'portaerei a propulsione atomica corazzata', weight: 90000000, emoji: '⚓' },
+    { name: 'colossali iceberg galleggianti dell\'Antartide', singular: 'colossale iceberg dell\'Antartide', weight: 50000000, emoji: '🧊' },
+    { name: 'Colosseo di Roma con tutte le arcate in travertino', singular: 'Colosseo di Roma con tutte le arcate', weight: 100000000, emoji: '🏛️' },
+    { name: 'dighe idroelettriche ad arco in calcestruzzo armato', singular: 'diga idroelettrica ad arco in calcestruzzo', weight: 200000000, emoji: '🌊' },
+    { name: 'asteroidi rocciosi nello spazio profondo', singular: 'asteroide roccioso nello spazio profondo', weight: 400000000, emoji: '☄️' }
   ]}
 ];
 
+const PHRASE_TEMPLATES = [
+  (desc, emoji) => `Hai sollevato l'equivalente di ${desc}! ${emoji}`,
+  (desc, emoji) => `Praticamente hai alzato di peso ${desc}! ${emoji}`,
+  (desc, emoji) => `Come aver caricato sulle spalle ${desc}! ${emoji}`,
+  (desc, emoji) => `Oggi hai mosso il peso esatto di ${desc}! ${emoji}`,
+  (desc, emoji) => `Pari al peso di ben ${desc}! Una vera forza della natura! ${emoji}`,
+  (desc, emoji) => `Immagina di sollevare ${desc}: ecco cosa hai fatto oggi! ${emoji}`,
+  (desc, emoji) => `Tonnellaggio da paura: è come aver spostato ${desc}! ${emoji}`,
+  (desc, emoji) => `Hai sollevato l'equivalente di ${desc}! Chiamate una gru! ${emoji}`,
+  (desc, emoji) => `Livello bestia sbloccato: hai alzato quanto ${desc}! ${emoji}`,
+  (desc, emoji) => `Puro titanio: hai spostato l'equivalente di ${desc}! ${emoji}`,
+  (desc, emoji) => `I tuoi muscoli hanno appena traslocato ${desc}! ${emoji}`,
+  (desc, emoji) => `Gravità chi? Oggi hai sollevato la bellezza di ${desc}! ${emoji}`,
+  (desc, emoji) => `Record da leggenda: è come aver fatto panca con ${desc}! ${emoji}`,
+  (desc, emoji) => `Niente scuse, solo ghisa: hai mosso l'equivalente di ${desc}! ${emoji}`,
+  (desc, emoji) => `Se ci fosse un'emergenza potresti lanciare via ${desc}! ${emoji}`,
+  (desc, emoji) => `Carico titanico: corrisponde al peso di ${desc}! ${emoji}`,
+  (desc, emoji) => `Una forza sovrumana: hai spostato ${desc}! ${emoji}`,
+  (desc, emoji) => `I tuoi bicipiti hanno appena sfidato ${desc}! ${emoji}`,
+  (desc, emoji) => `Stupefacente: il totale sollevato eguaglia ${desc}! ${emoji}`,
+  (desc, emoji) => `Nemmeno un muletto farebbe meglio: hai alzato ${desc}! ${emoji}`,
+  (desc, emoji) => `Fisico d'acciaio! Oggi hai spostato ${desc}! ${emoji}`,
+  (desc, emoji) => `Altro che cardio, hai movimentato l'equivalente di ${desc}! ${emoji}`,
+  (desc, emoji) => `Le leggi della fisica ringraziano: hai sollevato ben ${desc}! ${emoji}`,
+  (desc, emoji) => `Modalità Hulk attiva: è come aver sradicato ${desc}! ${emoji}`,
+  (desc, emoji) => `Impressionante: volume totale pari a ${desc}! ${emoji}`,
+  (desc, emoji) => `Sei pronto a salvare il mondo: hai sollevato ${desc}! ${emoji}`,
+  (desc, emoji) => `Un trasloco intero da solo: oggi hai alzato ${desc}! ${emoji}`,
+  (desc, emoji) => `Pari pari a ${desc}! Chi ti ferma più? ${emoji}`,
+  (desc, emoji) => `Una prestazione monumentale: hai spostato ${desc}! ${emoji}`,
+  (desc, emoji) => `Hai spostato tonnellaggio puro: esattamente quanto ${desc}! ${emoji}`,
+  (desc, emoji) => `Robocop scansati: oggi hai sollevato ${desc}! ${emoji}`,
+  (desc, emoji) => `Un carico epico: è esattamente il peso di ${desc}! ${emoji}`
+];
+
+function hashInt(n) {
+  let x = (Math.abs(Math.round(n)) ^ 0x5bf03635) >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+
 function getFunWeightEquivalence(kg, seed = 0) {
-  if (!kg || kg <= 0) return { emoji: '🏋️', phrase: 'Nessun carico spostato', shortText: 'Nessun carico' };
+  if (!kg || kg <= 0) return { emoji: '🏋️', phrase: 'Nessun carico registrato', shortText: 'Nessun carico' };
   const tier = FUN_COMPARISONS.find(c => kg <= c.max) || FUN_COMPARISONS[FUN_COMPARISONS.length - 1];
-  const item = tier.items[Math.abs(seed) % tier.items.length];
+  const h1 = hashInt(seed);
+  const h2 = hashInt(seed + Math.round(kg) * 31 + 17);
+  const item = tier.items[h1 % tier.items.length];
   const count = Math.max(1, Math.round(kg / item.weight));
   const desc = count === 1 ? ('1 ' + item.singular) : (`${count} ${item.name}`);
+  const template = PHRASE_TEMPLATES[(h2 + count) % PHRASE_TEMPLATES.length];
+  const phrase = template(desc, item.emoji);
   return {
     emoji: item.emoji,
     count: count,
     desc: desc,
-    phrase: `Hai sollevato l'equivalente di ${desc}! ${item.emoji}`,
-    shortText: `${item.emoji} L'equivalente di ${desc}`
+    phrase: phrase,
+    shortText: `${item.emoji} ${desc}`
   };
 }
 
@@ -2920,7 +3092,7 @@ function renderStoriaGrandTotal(totalWeightKg, sessCount, setsCount, exId = null
     return;
   }
   const tonnes = (totalWeightKg / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-  const grandEquiv = getFunWeightEquivalence(totalWeightKg, 999);
+  const grandEquiv = getFunWeightEquivalence(totalWeightKg, 99911 + Math.round(totalWeightKg * 7));
   const ex = exId ? exercises.find(e => e.id === exId) : null;
   const title = ex ? `Somma Totale Spostata per "${ex.name}"` : 'Somma di Tutto il Peso Spostato';
   const subText = sessCount != null
@@ -3003,7 +3175,7 @@ function renderStoria(exId) {
         return cur1RM > best.val ? { log: l, val: cur1RM } : best;
       },null);
 
-      const exEquiv = getFunWeightEquivalence(totalExWeight, (exId.charCodeAt(0) || 7));
+      const exEquiv = getFunWeightEquivalence(totalExWeight, (exId.charCodeAt(0) || 7) * 401 + Math.round(totalExWeight * 13));
 
       const prBox=el('div'); prBox.className='card'; prBox.style.margin='0 0 14px';
       prBox.style.borderLeft='4px solid var(--uc)';
@@ -3385,7 +3557,7 @@ function renderStoriaPerSessione() {
     grandTotalWeight += sessWeight;
     totalSetsCount += sess.ls.length;
 
-    const seed = Math.floor((sess.ts || sessIdx) / 1000) + sessIdx;
+    const seed = (sess.ts || 0) + (sessIdx * 7919) + Math.round(sessWeight * 17) + (sess.sid ? sess.sid.charCodeAt(0) * 31 : 0);
     const equiv = getFunWeightEquivalence(sessWeight, seed);
 
     const box=el('div'); box.className='card'; box.style.margin='0 0 14px'; box.style.borderLeft='4px solid var(--uc)';
