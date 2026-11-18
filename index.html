@@ -784,6 +784,13 @@
         <button type="button" class="btn btn-ghost btn-sm" id="btn-nota-toggle" style="margin-top:6px">📝 Aggiungi nota</button>
         <textarea id="al-nota" placeholder="Es. spalla che tira, macchina occupata…" style="display:none;width:100%;margin-top:8px;min-height:60px;background:#1c1c1c;border:1px solid #333;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:inherit"></textarea>
       </div>
+      <div id="next-ex-preview" style="display:none;margin-top:12px;padding:10px 12px;border-radius:10px;background:#222;border:1px solid #333">
+        <p style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Prossimo esercizio</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="nep-icon"></div>
+          <span id="nep-name" style="font-size:14px;color:#ccc;font-weight:500"></span>
+        </div>
+      </div>
     </div>
 
     <div class="sess-nav">
@@ -2467,6 +2474,19 @@ function renderStep() {
   if (step.tipo==='tempo') initTimer(step.durata||60);
   $('al-nota').value=''; $('al-nota').style.display='none';
   $('btn-nota-toggle').textContent='📝 Aggiungi nota';
+
+  // anteprima esercizio successivo
+  const nep=$('next-ex-preview');
+  const nextRealStep = steps.slice(cur+1).find(s=>!s.isRecupero);
+  if (nextRealStep) {
+    const nex=exercises.find(e=>e.id===nextRealStep.exId);
+    const nepIcon=$('nep-icon'); nepIcon.innerHTML='';
+    nepIcon.appendChild(makeIcon(nex,36));
+    $('nep-name').textContent=nex?.name||'—';
+    nep.style.display='block';
+  } else {
+    nep.style.display='none';
+  }
 }
 
 /* ── next / skip ── */
